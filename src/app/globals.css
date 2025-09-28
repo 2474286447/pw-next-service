@@ -1,0 +1,352 @@
+/* 
+ * globals.css - 全局样式文件（最终修复版）
+ * 
+ * 修复原则：
+ * 1. 保持原有布局结构不变
+ * 2. 只优化真正影响性能的部分
+ * 3. 移动端简化视觉效果但不改变定位
+ * 
+ * 关联文件：
+ * - 被所有页面组件使用
+ * - 影响整个应用的视觉风格
+ * 
+ * 更新历史：
+ * - 2024-01: 精准优化性能，不破坏布局
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --pixel-gold: #FFD700;
+    --pixel-dark-gold: #DAA520;
+    --pixel-light-gold: #FFF8DC;
+    --pixel-navy: #0A1628;
+    --pixel-white: #FFFFFF;
+    --pixel-gray: #8B8B8B;
+    --pixel-success: #00D4AA;
+    --pixel-size: 4px;
+
+    /* 底部菜单栏高度 */
+    --bottom-menu-height: 58px;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-[#0F0F1E] text-white;
+    font-family: 'Noto Sans SC', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}
+
+@layer components {
+  /* 像素字体 */
+  .pixel-font {
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 0.05em;
+  }
+  
+  /* 像素边框 */
+  .pixel-border {
+    border: var(--pixel-size) solid var(--pixel-gold);
+    box-shadow: 
+      0 var(--pixel-size) 0 0 var(--pixel-dark-gold),
+      0 calc(var(--pixel-size) * 2) 0 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  .pixel-border-white {
+    border: var(--pixel-size) solid var(--pixel-white);
+    box-shadow: 
+      0 var(--pixel-size) 0 0 var(--pixel-gray),
+      0 calc(var(--pixel-size) * 2) 0 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  /* 像素按钮 */
+  .pixel-btn {
+    @apply relative inline-block px-8 py-4 font-bold text-lg transition-all duration-100;
+    background: var(--pixel-gold);
+    color: var(--pixel-navy);
+    box-shadow: 
+      0 var(--pixel-size) 0 0 var(--pixel-dark-gold),
+      0 calc(var(--pixel-size) * 2) 0 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  .pixel-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 calc(var(--pixel-size) + 2px) 0 0 var(--pixel-dark-gold),
+      0 calc(var(--pixel-size) * 2 + 4px) 0 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  .pixel-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 var(--pixel-size) 0 0 var(--pixel-dark-gold),
+      0 calc(var(--pixel-size) * 2) 0 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  /* 像素卡片 */
+  .pixel-card {
+    @apply relative p-6;
+    background: rgba(255, 215, 0, 0.05);
+    border: var(--pixel-size) solid var(--pixel-dark-gold);
+    box-shadow: 
+      var(--pixel-size) var(--pixel-size) 0 0 rgba(255, 215, 0, 0.2),
+      calc(var(--pixel-size) * 2) calc(var(--pixel-size) * 2) 0 0 rgba(0, 0, 0, 0.2);
+  }
+  
+  .pixel-card::before,
+  .pixel-card::after {
+    content: '';
+    position: absolute;
+    width: var(--pixel-size);
+    height: var(--pixel-size);
+    background: var(--pixel-gold);
+  }
+  
+  .pixel-card::before {
+    top: -var(--pixel-size);
+    left: -var(--pixel-size);
+  }
+  
+  .pixel-card::after {
+    bottom: -var(--pixel-size);
+    right: -var(--pixel-size);
+  }
+}
+
+@layer utilities {
+  /* 像素网格背景 */
+  .pixel-grid {
+    background-image: 
+      repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(255, 215, 0, 0.03) 50px, rgba(255, 215, 0, 0.03) 51px),
+      repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255, 215, 0, 0.03) 50px, rgba(255, 215, 0, 0.03) 51px);
+  }
+  
+  /* 金色光晕 */
+  .gold-glow {
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+  }
+  
+  /* 优化后的文字阴影 - 减少重影效果 */
+  .pixel-text-shadow {
+    /* 桌面端：保持原有效果但简化 */
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+    -webkit-text-stroke: 1px var(--pixel-dark-gold);
+    text-stroke: 1px var(--pixel-dark-gold);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  .pixel-text-shadow-sm {
+    /* 小尺寸文字使用更细微的效果 */
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+    -webkit-text-stroke: 0.5px var(--pixel-dark-gold);
+    text-stroke: 0.5px var(--pixel-dark-gold);
+  }
+  
+  /* 为需要强调的文字提供可选的光晕效果 */
+  .pixel-text-glow {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    -webkit-text-stroke: 1px var(--pixel-dark-gold);
+    text-stroke: 1px var(--pixel-dark-gold);
+  }
+  
+  /* 无障碍模式 - 用户可以通过添加这个类来完全禁用特效 */
+  .reduce-motion .pixel-text-shadow,
+  .reduce-motion .pixel-text-shadow-sm,
+  .reduce-motion .pixel-text-glow {
+    text-shadow: none;
+    -webkit-text-stroke: none;
+    text-stroke: none;
+    /* 使用下划线或加粗来替代视觉强调 */
+    font-weight: 900;
+    text-decoration: underline;
+    text-decoration-color: var(--pixel-gold);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+}
+
+/* 像素化动画 */
+@keyframes pixel-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pixel-pulse {
+  0%, 100% { 
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pixel-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.pixel-float {
+  animation: pixel-float 3s ease-in-out infinite;
+}
+
+.pixel-pulse {
+  animation: pixel-pulse 2s ease-in-out infinite;
+}
+
+.pixel-blink {
+  animation: pixel-blink 1s step-end infinite;
+}
+
+/* 选择器样式 */
+::selection {
+  background-color: var(--pixel-gold);
+  color: var(--pixel-navy);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--pixel-navy);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--pixel-gold);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pixel-dark-gold);
+}
+
+/* ========== 移动端性能优化（不改变布局） ========== */
+@media (max-width: 768px) {
+  /* 简化文字阴影效果 */
+  .pixel-text-shadow {
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+    -webkit-text-stroke: none;
+    text-stroke: none;
+  }
+  
+  .pixel-text-shadow-sm {
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+    -webkit-text-stroke: none;
+    text-stroke: none;
+  }
+  
+  .pixel-text-glow {
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    -webkit-text-stroke: none;
+    text-stroke: none;
+  }
+  
+  /* 简化动画 */
+  .pixel-float {
+    animation: pixel-float 4s ease-in-out infinite;
+  }
+  
+  .pixel-pulse {
+    animation: pixel-pulse 3s ease-in-out infinite;
+  }
+  
+  /* 简化像素网格背景 */
+  .pixel-grid {
+    background-image: none;
+  }
+  
+  /* 简化光晕效果 */
+  .gold-glow {
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.3));
+  }
+  
+  /* 优化触摸反馈 */
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* 防止 iOS 输入框缩放 */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* 简化卡片装饰 */
+  .pixel-card::before,
+  .pixel-card::after {
+    display: none;
+  }
+  
+  /* 优化滚动性能 */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ========== 低性能设备检测 ========== */
+@media (hover: none) and (pointer: coarse) {
+  /* 触摸设备优化 */
+  .pixel-btn:hover {
+    transform: none;
+  }
+  
+  /* 减少过渡动画 */
+  * {
+    transition-duration: 0.1s !important;
+  }
+}
+
+/* ========== 减少动画偏好 ========== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .pixel-text-shadow,
+  .pixel-text-shadow-sm,
+  .pixel-text-glow {
+    text-shadow: none !important;
+    -webkit-text-stroke: none !important;
+    text-stroke: none !important;
+  }
+}
+
+/** 图标旋转动画 */
+.icon-spin {
+  animation: icon-spin 2s linear infinite;
+}
+@keyframes icon-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

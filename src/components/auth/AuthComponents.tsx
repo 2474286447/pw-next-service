@@ -1,0 +1,1939 @@
+/*
+ * @Author: yy
+ * @Date: 2025-09-10 21:20:28
+ * @LastEditTime: 2025-09-13 01:07:35
+ * @LastEditors: yy
+ * @Description: 
+ */
+// components/auth/AuthComponents.tsx
+'use client'
+
+import { useState, useEffect, useCallback, useRef, CanvasHTMLAttributes } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import { PixelLogo } from '@/components/ui/PixelLogo'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { api, getErrorMessage, type RegisterRequest, type EmailRegisterRequest, type PasswordResetRequest, type PasswordResetConfirmRequest } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
+import CaptchaMini from 'captcha-mini'
+
+// 共享的输入框组件
+interface PixelInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label: string
+  error?: string
+  icon?: string
+  showPasswordToggle?: boolean
+  onShowPasswordChange?: (show: boolean) => void
+  hasButton?: boolean // 新增：是否有按钮
+  hint?: string // 新增：输入提示
+  prefixNode?: React.ReactNode // 输入框前缀节点
+}
+
+function PixelInput({
+  label,
+  error,
+  icon,
+  className,
+  showPasswordToggle,
+  onShowPasswordChange,
+  hasButton = false,
+  hint,
+  prefixNode,
+  ...props
+}: PixelInputProps) {
+  const [showPassword, setShowPassword] = useState(false)
+  const inputType = props.type === 'password' && showPassword ? 'text' : props.type
+
+  const handleTogglePassword = () => {
+    const newValue = !showPassword
+    setShowPassword(newValue)
+    onShowPasswordChange?.(newValue)
+  }
+
+  return (
+    <div className="space-y-2">
+      <label
+        className="text-sm font-bold text-gray-300"
+        htmlFor={props.id || props.name}
+      >
+        {label}
+      </label>
+      <div className="relative">
+        {icon && (
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl pointer-events-none select-none">
+            {icon}
+          </span>
+        )}
+
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl select-none">
+          {prefixNode}
+        </span>
+
+        <input
+          id={props.id || props.name}
+          className={cn(
+            'w-full px-4 py-3 bg-gray-900 border-2 border-gray-700',
+            'focus:border-gold-500 focus:outline-none transition-all duration-200',
+            'text-white placeholder-gray-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            icon && 'pl-12',
+            prefixNode && 'pl-[100px]',
+            showPasswordToggle && 'pr-12',
+            hasButton && 'pr-32', // 为按钮预留空间
+            error && 'border-red-500',
+            className
+          )}
+          {...props}
+          type={inputType}
+        />
+        {showPasswordToggle && props.type === 'password' && (
+          <button
+            type="button"
+            onClick={handleTogglePassword}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            aria-label={showPassword ? '隐藏密码' : '显示密码'}
+            tabIndex={-1}
+          >
+            {showPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
+        )}
+      </div>
+      {hint && !error && (
+        <p className="text-xs text-gray-500">{hint}</p>
+      )}
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-red-500"
+          role="alert"
+        >
+          {error}
+        </motion.p>
+      )}
+    </div>
+  )
+}
+
+// 提示信息组件
+function MessageTooltip({ type, text }: { type: 'error' | 'success', text: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 5, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 5, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className={cn(
+        "absolute -top-10 right-0 z-50",
+        "px-3 py-2 rounded-lg shadow-lg",
+        "text-xs font-medium whitespace-nowrap",
+        "max-w-[280px]",
+        type === 'error'
+          ? "bg-red-500/90 text-white"
+          : "bg-green-500/90 text-white"
+      )}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-base">
+          {type === 'error' ? '❌' : '✅'}
+        </span>
+        <span>{text}</span>
+      </div>
+      {/* 小三角指示器 */}
+      <div
+        className={cn(
+          "absolute -bottom-1 right-6",
+          "w-2 h-2 rotate-45",
+          type === 'error'
+            ? "bg-red-500/90"
+            : "bg-green-500/90"
+        )}
+      />
+    </motion.div>
+  )
+}
+
+// 优化后的倒计时按钮组件
+interface CountdownButtonProps {
+  onClick: () => Promise<void>
+  disabled?: boolean
+  email: string
+  type: 'register' | 'reset'
+}
+
+function CountdownButton({ onClick, disabled, email, type }: CountdownButtonProps) {
+  const [countdown, setCountdown] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current)
+        messageTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const showMessage = (type: 'error' | 'success', text: string, duration: number = 5000) => {
+    setMessage({ type, text })
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current)
+    }
+    messageTimeoutRef.current = setTimeout(() => {
+      setMessage(null)
+      messageTimeoutRef.current = null
+    }, duration)
+  }
+
+  const handleClick = async () => {
+    if (countdown > 0 || disabled || loading) return
+
+    if (!email || !email.trim()) {
+      showMessage('error', '请先输入邮箱地址')
+      return
+    }
+
+    if (!validateEmail(email)) {
+      showMessage('error', '请输入有效的邮箱地址')
+      return
+    }
+
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      await onClick()
+
+      // 发送成功提示
+      showMessage('success', '验证码已发送，请查收邮箱（含垃圾箱）', 8000)
+
+      setCountdown(60)
+
+      intervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+            }
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } catch (error) {
+      console.error('发送验证码失败:', error)
+      const errorMessage = getErrorMessage(error)
+      showMessage('error', errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const isDisabled = countdown > 0 || disabled || loading || !email || !validateEmail(email)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isDisabled}
+        className={cn(
+          'px-3 py-2 text-sm font-bold whitespace-nowrap',
+          'transition-all duration-200',
+          'focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-gray-900',
+          isDisabled
+            ? 'text-gray-500 cursor-not-allowed'
+            : 'text-gold-500 hover:text-gold-400 active:scale-95'
+        )}
+        aria-label="发送验证码"
+      >
+        {loading ? (
+          <span className="flex items-center gap-1">
+            <span className="animate-spin">⏳</span>
+            发送中...
+          </span>
+        ) : countdown > 0 ? (
+          `${countdown}秒后重试`
+        ) : (
+          '发送验证码'
+        )}
+      </button>
+
+      {/* 提示信息 */}
+      <AnimatePresence>
+        {message && (
+          <MessageTooltip
+            type={message.type}
+            text={message.text}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+// 带验证码按钮的输入框包装组件
+interface VerificationInputProps {
+  label: string
+  name: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder: string
+  icon: string
+  error?: string
+  maxLength?: number
+  autoComplete?: string
+  autoFocus?: boolean
+  onSendCode: () => Promise<void>
+  email: string
+  type: 'register' | 'reset'
+}
+
+function VerificationInput({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  icon,
+  error,
+  maxLength,
+  autoComplete,
+  autoFocus,
+  onSendCode,
+  email,
+  type
+}: VerificationInputProps) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-bold text-gray-300" htmlFor={name}>
+        {label}
+      </label>
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl pointer-events-none select-none z-10">
+          {icon}
+        </span>
+        <input
+          id={name}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          autoComplete={autoComplete}
+          autoFocus={autoFocus}
+          className={cn(
+            'w-full px-4 py-3 bg-gray-900 border-2 border-gray-700',
+            'focus:border-gold-500 focus:outline-none transition-all duration-200',
+            'text-white placeholder-gray-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'pl-12 pr-28',
+            error && 'border-red-500'
+          )}
+        />
+        {/* 按钮容器 - 确保提示信息有足够空间显示 */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <div className="relative">
+            <CountdownButton
+              onClick={onSendCode}
+              email={email}
+              type={type}
+            />
+          </div>
+        </div>
+      </div>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-red-500"
+          role="alert"
+        >
+          {error}
+        </motion.p>
+      )}
+    </div>
+  )
+}
+
+// 验证函数
+function validatePassword(password: string): string | null {
+  if (!password) return '请输入密码'
+  if (password.length < 8 || password.length > 32) {
+    return '密码长度应为8-32位'
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    return '密码必须包含字母'
+  }
+  if (!/[0-9]/.test(password)) {
+    return '密码必须包含数字'
+  }
+  return null
+}
+
+function validateEmail(email: string): string | null {
+  if (!email) return '请输入邮箱地址'
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return '请输入有效的邮箱地址'
+  }
+  return null
+}
+
+function validateUsername(username: string): string | null {
+  if (!username) return '请输入用户名'
+  if (username.length < 2) return '用户名长度至少2个字符'
+  if (username.length > 150) return '用户名长度不能超过150个字符'
+  // 支持中文、英文、数字、下划线、@符号、点号
+  if (!/^[\w\u4e00-\u9fa5@.-]+$/.test(username)) {
+    return '用户名只能包含中文、英文、数字、下划线、@符号和点号'
+  }
+  return null
+}
+
+// 验证登录账号（支持多种格式）
+function validateLoginAccount(account: string): string | null {
+  if (!account) return '请输入登录账号'
+  if (account.length < 2) return '账号长度至少2个字符'
+  return null
+}
+
+// 注册组件
+export function RegisterForm() {
+  const router = useRouter()
+
+  // 验证实例
+  const captchaRef = useRef<typeof CaptchaMini>(null)
+  // 验证元素实例
+  const captchaNodeRef = useRef<HTMLCanvasElement>(null)
+  // 正确验证码
+  const captchaCodeRef = useRef<string>();
+
+
+  // 验证码输入框信息
+  const [captchaInputInfo, setCaptchaInputInfo] = useState({
+    value: '',
+    error: '',
+    touched: false,
+  });
+
+  const [loading, setLoading] = useState(false)
+  const [registrationMethod, setRegistrationMethod] = useState<'quick' | 'email'>('quick') // 默认快速注册
+  const [step, setStep] = useState(1)
+
+  // 快速注册表单数据
+  const [quickFormData, setQuickFormData] = useState({
+    username: '',
+    password: '',
+    password_confirm: '',
+    referral_code: '',
+    agreement: false,
+  })
+
+  // 邮箱注册表单数据
+  const [emailFormData, setEmailFormData] = useState({
+    email: '',
+    password: '',
+    password_confirm: '',
+    verification_code: '',
+    referral_code: '',
+    agreement: false,
+  })
+
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [isReferralCodeLocked, setIsReferralCodeLocked] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const refCode = params.get('ref')
+      if (refCode) {
+        setQuickFormData(prev => ({ ...prev, referral_code: refCode }))
+        setEmailFormData(prev => ({ ...prev, referral_code: refCode }))
+        setIsReferralCodeLocked(true)
+      }
+    }
+  }, [])
+
+  // 快速注册输入处理
+  const handleQuickInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setQuickFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+
+    setTouched(prev => ({ ...prev, [name]: true }))
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+
+    // 实时验证
+    if (name === 'username' && touched.username) {
+      const error = validateUsername(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, username: error }))
+      }
+    } else if (name === 'password' && touched.password) {
+      const error = validatePassword(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, password: error }))
+      }
+    } else if (name === 'password_confirm' && touched.password_confirm) {
+      const error = value !== quickFormData.password ? '两次密码不一致' : null
+      if (error) {
+        setErrors(prev => ({ ...prev, password_confirm: error }))
+      }
+    }
+  }
+
+  // 邮箱注册输入处理
+  const handleEmailInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setEmailFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+
+    setTouched(prev => ({ ...prev, [name]: true }))
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+
+    // 实时验证
+    if (name === 'email' && touched.email) {
+      const error = validateEmail(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, email: error }))
+      }
+    } else if (name === 'password' && touched.password) {
+      const error = validatePassword(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, password: error }))
+      }
+    } else if (name === 'password_confirm' && touched.password_confirm) {
+      const error = value !== emailFormData.password ? '两次密码不一致' : null
+      if (error) {
+        setErrors(prev => ({ ...prev, password_confirm: error }))
+      }
+    } else if (name === 'verification_code') {
+      const error = value && value.length !== 6 ? '请输入6位验证码' : null
+      if (error) {
+        setErrors(prev => ({ ...prev, verification_code: error }))
+      }
+    }
+  }
+
+  // 快速注册验证
+  const validateQuickRegistration = () => {
+    const newErrors: Record<string, string> = {}
+
+    const usernameError = validateUsername(quickFormData.username)
+    if (usernameError) newErrors.username = usernameError
+
+    const passwordError = validatePassword(quickFormData.password)
+    if (passwordError) newErrors.password = passwordError
+
+    if (quickFormData.password !== quickFormData.password_confirm) {
+      newErrors.password_confirm = '两次密码不一致'
+    }
+
+    if (!quickFormData.referral_code || !quickFormData.referral_code.trim()) {
+      newErrors.referral_code = '邀请码不能为空'
+    }
+
+    if (!quickFormData.agreement) {
+      newErrors.agreement = '请同意用户协议'
+    }
+
+    // 校验验证码
+    if (captchaInputInfo.value?.toLocaleUpperCase() !== captchaCodeRef.current?.toLocaleUpperCase()) {
+      setCaptchaInputInfo(prev => ({ ...prev, error: '验证码错误' }))
+
+      return false
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // 邮箱注册步骤1验证
+  const validateEmailStep1 = () => {
+    const newErrors: Record<string, string> = {}
+
+    const emailError = validateEmail(emailFormData.email)
+    if (emailError) newErrors.email = emailError
+
+    const passwordError = validatePassword(emailFormData.password)
+    if (passwordError) newErrors.password = passwordError
+
+    if (emailFormData.password !== emailFormData.password_confirm) {
+      newErrors.password_confirm = '两次密码不一致'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // 邮箱注册步骤2验证
+  const validateEmailStep2 = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!emailFormData.verification_code || emailFormData.verification_code.length !== 6) {
+      newErrors.verification_code = '请输入6位验证码'
+    }
+
+    if (!emailFormData.referral_code || !emailFormData.referral_code.trim()) {
+      newErrors.referral_code = '邀请码不能为空'
+    }
+
+    if (!emailFormData.agreement) {
+      newErrors.agreement = '请同意用户协议'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // 快速注册提交
+  const handleQuickRegister = async () => {
+    setTouched({
+      username: true,
+      password: true,
+      password_confirm: true,
+      referral_code: true,
+      agreement: true
+    })
+
+    if (!validateQuickRegistration()) {
+      return
+    }
+
+    setLoading(true)
+    setErrors({})
+
+    try {
+      const registerData: RegisterRequest = {
+        username: quickFormData.username.trim(),
+        password: quickFormData.password,
+        password_confirm: quickFormData.password_confirm,
+        referral_code: quickFormData.referral_code.trim().toUpperCase(),
+      }
+
+      console.log('[RegisterForm] 开始快速注册...')
+      const response = await api.auth.register(registerData)
+      console.log('[RegisterForm] 注册成功:', response)
+
+      setStep(3) // 跳转到成功页面
+    } catch (error) {
+      console.error('[RegisterForm] 注册失败:', error)
+      const errorMessage = getErrorMessage(error)
+      setErrors({ submit: errorMessage })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 邮箱注册下一步
+  const handleEmailNext = async () => {
+    if (step === 1) {
+      setTouched({ email: true, password: true, password_confirm: true })
+
+      if (validateEmailStep1()) {
+        setStep(2)
+      }
+    } else if (step === 2) {
+      setTouched(prev => ({
+        ...prev,
+        verification_code: true,
+        referral_code: true,
+        agreement: true
+      }))
+
+      if (validateEmailStep2()) {
+        setLoading(true)
+        setErrors({})
+
+        try {
+          const registerData: EmailRegisterRequest = {
+            email: emailFormData.email.trim(),
+            password: emailFormData.password,
+            password_confirm: emailFormData.password_confirm,
+            verification_code: emailFormData.verification_code.trim(),
+            referral_code: emailFormData.referral_code.trim().toUpperCase(),
+          }
+
+          console.log('[RegisterForm] 开始邮箱注册...')
+          const response = await api.auth.registerWithEmail(registerData)
+          console.log('[RegisterForm] 注册成功:', response)
+
+          setStep(3)
+        } catch (error) {
+          console.error('[RegisterForm] 注册失败:', error)
+          const errorMessage = getErrorMessage(error)
+          setErrors({ submit: errorMessage })
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+  }
+
+  const handleSendVerifyCode = async () => {
+    await api.auth.sendEmailCode({
+      email: emailFormData.email.trim(),
+      type: 'register'
+    })
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      e.preventDefault()
+      if (registrationMethod === 'quick') {
+        handleQuickRegister()
+      } else {
+        handleEmailNext()
+      }
+    }
+  }
+
+  // 切换注册方式时重置表单
+  const handleMethodChange = (method: 'quick' | 'email') => {
+    setRegistrationMethod(method)
+    setStep(1)
+    setErrors({})
+    setTouched({})
+  }
+
+  useEffect(() => {
+    // 初始化验证码
+    captchaRef.current = new CaptchaMini();
+    // 绘制验证码
+    captchaRef.current.draw(captchaNodeRef.current, (r: string) => {
+      // 验证码绘制成功后，将验证码值保存到状态中
+      captchaCodeRef.current = r;
+    });
+  }, [])
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      {/* 注册方式切换 */}
+      {step < 3 && (
+        <div className="mb-6">
+          <div className="flex rounded-lg bg-gray-800/50 p-1">
+            <button
+              type="button"
+              onClick={() => handleMethodChange('quick')}
+              className={cn(
+                'flex-1 py-2 px-4 rounded-md text-sm font-bold transition-all duration-200',
+                registrationMethod === 'quick'
+                  ? 'bg-gold-500 text-black'
+                  : 'text-gray-400 hover:text-white'
+              )}
+            >
+              快速注册
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMethodChange('email')}
+              className={cn(
+                'flex-1 py-2 px-4 rounded-md text-sm font-bold transition-all duration-200',
+                registrationMethod === 'email'
+                  ? 'bg-gold-500 text-black'
+                  : 'text-gray-400 hover:text-white'
+              )}
+            >
+              邮箱验证注册
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-center text-gray-500">
+            {registrationMethod === 'quick'
+              ? '推荐：无需邮箱验证，立即注册'
+              : '需要邮箱验证码，更安全'}
+          </p>
+        </div>
+      )}
+
+      <AnimatePresence mode="wait">
+        {/* 快速注册 */}
+        {registrationMethod === 'quick' && step < 3 && (
+          <motion.div
+            key="quick"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+            onKeyPress={handleKeyPress}
+          >
+            <h2 className="text-2xl font-black text-center mb-6">
+              快速创建账号
+              <span className="block text-sm text-gray-400 font-normal mt-2">
+                无需邮箱验证，立即开始
+              </span>
+            </h2>
+
+            <PixelInput
+              label="用户名"
+              name="username"
+              type="text"
+              value={quickFormData.username}
+              onChange={handleQuickInputChange}
+              placeholder="支持中英文、数字、下划线"
+              icon="👤"
+              error={touched.username ? errors.username : ''}
+              autoComplete="username"
+              autoFocus
+              hint="可使用邮箱作为用户名，如：user@example.com"
+            />
+
+            <PixelInput
+              label="登录密码"
+              name="password"
+              type="password"
+              value={quickFormData.password}
+              onChange={handleQuickInputChange}
+              placeholder="8-32位字母+数字"
+              icon="🔐"
+              error={touched.password ? errors.password : ''}
+              autoComplete="new-password"
+              showPasswordToggle
+            />
+
+            <PixelInput
+              label="确认密码"
+              name="password_confirm"
+              type="password"
+              value={quickFormData.password_confirm}
+              onChange={handleQuickInputChange}
+              placeholder="再次输入密码"
+              icon="🔐"
+              error={touched.password_confirm ? errors.password_confirm : ''}
+              autoComplete="new-password"
+              showPasswordToggle
+            />
+
+            <PixelInput
+              label="验证码"
+              value={captchaInputInfo.value}
+              onChange={(e) => setCaptchaInputInfo((pre) => {
+                return { ...pre, value: e.target.value }
+              })}
+              placeholder="输入验证码"
+              prefixNode={<canvas ref={captchaNodeRef} width="80" height="40" />}
+              error={captchaInputInfo.error ? captchaInputInfo.error : ''}
+              autoComplete="new-password"
+            />
+
+            <PixelInput
+              label="邀请码（必填）"
+              name="referral_code"
+              value={quickFormData.referral_code}
+              onChange={handleQuickInputChange}
+              placeholder="请输入邀请码"
+              icon="🎁"
+              error={touched.referral_code ? errors.referral_code : ''}
+              disabled={isReferralCodeLocked}
+              hint="必须填写有效的邀请码才能注册"
+            />
+
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="quick-agreement"
+                  name="agreement"
+                  checked={quickFormData.agreement}
+                  onChange={handleQuickInputChange}
+                  className="w-4 h-4 mt-1 cursor-pointer"
+                />
+                <label htmlFor="quick-agreement" className="text-sm text-gray-400 cursor-pointer select-none">
+                  我已阅读并同意
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold-500 hover:underline mx-1">
+                    《用户协议》
+                  </a>
+                  和
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-gold-500 hover:underline mx-1">
+                    《隐私政策》
+                  </a>
+                </label>
+              </div>
+              {touched.agreement && errors.agreement && (
+                <p className="text-xs text-red-500 ml-6">{errors.agreement}</p>
+              )}
+            </div>
+
+            {/* 提示信息 */}
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm">
+              <p className="text-blue-400 flex items-start gap-2">
+                <span className="text-lg">💡</span>
+                <span>
+                  如果收不到邮箱验证码，可以切换到"快速注册"方式
+                </span>
+              </p>
+            </div>
+
+            {errors.submit && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-red-500/10 border border-red-500/20 rounded"
+              >
+                <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+              </motion.div>
+            )}
+
+            <motion.button
+              className="w-full pixel-btn"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleQuickRegister}
+              disabled={loading}
+              type="button"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="animate-spin">⏳</span>
+                  注册中...
+                </span>
+              ) : (
+                '立即注册'
+              )}
+            </motion.button>
+
+            <p className="text-center text-sm text-gray-400">
+              已有账号？
+              <Link href="/login" className="text-gold-500 hover:underline ml-1">
+                立即登录
+              </Link>
+            </p>
+          </motion.div>
+        )}
+
+        {/* 邮箱注册 - 步骤1 */}
+        {registrationMethod === 'email' && step === 1 && (
+          <motion.div
+            key="email-step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+            onKeyPress={handleKeyPress}
+          >
+            <h2 className="text-2xl font-black text-center mb-6">
+              邮箱验证注册
+              <span className="block text-sm text-gray-400 font-normal mt-2">
+                填写基本信息
+              </span>
+            </h2>
+
+            <PixelInput
+              label="邮箱地址"
+              name="email"
+              type="email"
+              value={emailFormData.email}
+              onChange={handleEmailInputChange}
+              placeholder="example@email.com"
+              icon="📧"
+              error={touched.email ? errors.email : ''}
+              autoComplete="email"
+              autoFocus
+            />
+
+            <PixelInput
+              label="登录密码"
+              name="password"
+              type="password"
+              value={emailFormData.password}
+              onChange={handleEmailInputChange}
+              placeholder="8-32位字母+数字"
+              icon="🔐"
+              error={touched.password ? errors.password : ''}
+              autoComplete="new-password"
+              showPasswordToggle
+            />
+
+            <PixelInput
+              label="确认密码"
+              name="password_confirm"
+              type="password"
+              value={emailFormData.password_confirm}
+              onChange={handleEmailInputChange}
+              placeholder="再次输入密码"
+              icon="🔐"
+              error={touched.password_confirm ? errors.password_confirm : ''}
+              autoComplete="new-password"
+              showPasswordToggle
+            />
+
+            <motion.button
+              className="w-full pixel-btn"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleEmailNext}
+              disabled={loading}
+              type="button"
+            >
+              下一步
+            </motion.button>
+
+            <p className="text-center text-sm text-gray-400">
+              已有账号？
+              <Link href="/login" className="text-gold-500 hover:underline ml-1">
+                立即登录
+              </Link>
+            </p>
+          </motion.div>
+        )}
+
+        {/* 邮箱注册 - 步骤2 */}
+        {registrationMethod === 'email' && step === 2 && (
+          <motion.div
+            key="email-step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+            onKeyPress={handleKeyPress}
+          >
+            <h2 className="text-2xl font-black text-center mb-6">
+              验证邮箱
+              <span className="block text-sm text-gray-400 font-normal mt-2">
+                验证码将发送到 {emailFormData.email}
+              </span>
+            </h2>
+
+            <VerificationInput
+              label="邮箱验证码"
+              name="verification_code"
+              value={emailFormData.verification_code}
+              onChange={handleEmailInputChange}
+              placeholder="请输入6位验证码"
+              icon="✉️"
+              error={touched.verification_code ? errors.verification_code : ''}
+              maxLength={6}
+              autoComplete="one-time-code"
+              autoFocus
+              onSendCode={handleSendVerifyCode}
+              email={emailFormData.email}
+              type="register"
+            />
+
+            {/* 邮箱提示 */}
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded text-sm">
+              <p className="text-yellow-400 flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <span>
+                  验证码可能会被误判为垃圾邮件，请同时检查垃圾箱。
+                  如果长时间收不到，请切换到"快速注册"方式。
+                </span>
+              </p>
+            </div>
+
+            <PixelInput
+              label="邀请码（必填）"
+              name="referral_code"
+              value={emailFormData.referral_code}
+              onChange={handleEmailInputChange}
+              placeholder="请输入邀请码"
+              icon="🎁"
+              error={touched.referral_code ? errors.referral_code : ''}
+              disabled={isReferralCodeLocked}
+              hint="必须填写有效的邀请码才能注册"
+            />
+
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="email-agreement"
+                  name="agreement"
+                  checked={emailFormData.agreement}
+                  onChange={handleEmailInputChange}
+                  className="w-4 h-4 mt-1 cursor-pointer"
+                />
+                <label htmlFor="email-agreement" className="text-sm text-gray-400 cursor-pointer select-none">
+                  我已阅读并同意
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-gold-500 hover:underline mx-1">
+                    《用户协议》
+                  </a>
+                  和
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-gold-500 hover:underline mx-1">
+                    《隐私政策》
+                  </a>
+                </label>
+              </div>
+              {touched.agreement && errors.agreement && (
+                <p className="text-xs text-red-500 ml-6">{errors.agreement}</p>
+              )}
+            </div>
+
+            {errors.submit && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-red-500/10 border border-red-500/20 rounded"
+              >
+                <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+              </motion.div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <motion.button
+                className="px-6 py-3 border-2 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-all"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setStep(1)}
+                disabled={loading}
+                type="button"
+              >
+                上一步
+              </motion.button>
+              <motion.button
+                className="pixel-btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleEmailNext}
+                disabled={loading}
+                type="button"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    注册中...
+                  </span>
+                ) : (
+                  '完成注册'
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 注册成功 */}
+        {step === 3 && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <motion.div
+                className="text-6xl mb-4"
+                animate={{
+                  rotate: [0, 360],
+                  scale: [1, 1.2, 1]
+                }}
+                transition={{ duration: 1 }}
+              >
+                🎉
+              </motion.div>
+              <h2 className="text-2xl font-black mb-2">
+                注册成功！
+              </h2>
+              <p className="text-gray-400">
+                欢迎加入平行世界
+              </p>
+            </div>
+
+            <motion.button
+              className="w-full pixel-btn"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push('/dashboard')}
+              type="button"
+            >
+              进入平行世界
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// 登录组件
+export function LoginForm() {
+  const { login } = useAuth()
+  const [formData, setFormData] = useState({
+    account: '', // 改为 account，支持多种登录方式
+    password: '',
+    rememberMe: false,
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [showLoginHint, setShowLoginHint] = useState(false)
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+    setTouched(prev => ({ ...prev, [name]: true }))
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        delete newErrors.submit
+        return newErrors
+      })
+    }
+  }
+
+  const handleLogin = async () => {
+    if (loading) return
+
+    setTouched({ account: true, password: true })
+
+    const newErrors: Record<string, string> = {}
+
+    const accountError = validateLoginAccount(formData.account)
+    if (accountError) newErrors.account = accountError
+
+    if (!formData.password) {
+      newErrors.password = '请输入密码'
+    }
+
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      return
+    }
+
+    setLoading(true)
+    setErrors({})
+
+    try {
+      console.log('[LoginForm] 开始登录...')
+      // 传递账号到后端，后端会自动识别是邮箱、用户名还是昵称
+      await login(formData.account.trim(), formData.password)
+      console.log('[LoginForm] 登录成功')
+    } catch (error) {
+      console.error('[LoginForm] 登录失败:', error)
+      const errorMessage = getErrorMessage(error)
+      setErrors({ submit: errorMessage })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      e.preventDefault()
+      handleLogin()
+    }
+  }
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <div className="text-center">
+          <h2 className="text-3xl font-black mb-2">
+            欢迎回来
+          </h2>
+          <p className="text-gray-400">
+            登录您的平行世界账号
+          </p>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin();
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <PixelInput
+              label="登录账号"
+              name="account"
+              type="text"
+              value={formData.account}
+              onChange={handleInputChange}
+              placeholder="邮箱 / 用户名 / 昵称"
+              icon="👤"
+              error={touched.account ? errors.account : ''}
+              autoComplete="username"
+              autoFocus
+              disabled={loading}
+              hint="支持邮箱、用户名（可省略@后缀）或昵称登录"
+            />
+
+            {/* 登录方式提示 */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowLoginHint(!showLoginHint)}
+                className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                {showLoginHint ? '收起' : '查看'}支持的登录方式 {showLoginHint ? '▲' : '▼'}
+              </button>
+
+              <AnimatePresence>
+                {showLoginHint && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 p-3 bg-gray-900/50 rounded text-xs text-gray-400 space-y-1"
+                  >
+                    <p>📧 <strong>邮箱</strong>：user@example.com</p>
+                    <p>👤 <strong>用户名</strong>：john 或 john@example.com</p>
+                    <p>✨ <strong>昵称</strong>：我的昵称</p>
+                    <p className="text-gold-500 mt-2">💡 提示：用户名登录时可省略@及后面部分</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <div>
+            <PixelInput
+              label="登录密码"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="请输入密码"
+              icon="🔐"
+              error={touched.password ? errors.password : ''}
+              autoComplete="current-password"
+              showPasswordToggle
+              disabled={loading}
+            />
+            <div className="flex items-center justify-between mt-2">
+              <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 cursor-pointer"
+                  disabled={loading}
+                />
+                记住我
+              </label>
+              <Link
+                href="/reset-password"
+                className={cn(
+                  "text-sm text-gold-500 hover:underline",
+                  loading && "pointer-events-none opacity-50"
+                )}
+                tabIndex={loading ? -1 : 0}
+              >
+                忘记密码？
+              </Link>
+            </div>
+          </div>
+
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 bg-red-500/10 border border-red-500/20 rounded"
+            >
+              <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+              {errors.submit.includes('用户不存在') && (
+                <p className="text-xs text-gray-400 text-center mt-1">
+                  请检查账号是否正确，支持邮箱、用户名或昵称登录
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          <motion.button
+            type="submit"
+            className={cn(
+              "w-full pixel-btn",
+              loading && "opacity-70 cursor-not-allowed"
+            )}
+            whileHover={!loading ? { scale: 1.02 } : {}}
+            whileTap={!loading ? { scale: 0.98 } : {}}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin">⏳</span>
+                登录中...
+              </span>
+            ) : (
+              '进入平行世界'
+            )}
+          </motion.button>
+
+          <div className="text-center space-y-2">
+            <p className="text-sm text-gray-400">
+              还没有账号？
+              <Link
+                href="/register"
+                className={cn(
+                  "text-gold-500 hover:underline ml-1",
+                  loading && "pointer-events-none opacity-50"
+                )}
+                tabIndex={loading ? -1 : 0}
+              >
+                立即注册
+              </Link>
+            </p>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  )
+}
+
+// 找回密码组件
+export function ResetPasswordForm() {
+  const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    verification_code: '',
+    token: '',
+    new_password: '',
+    new_password_confirm: '',
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    setTouched(prev => ({ ...prev, [name]: true }))
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+
+    // 实时验证
+    if (name === 'email' && touched.email) {
+      const error = validateEmail(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, email: error }))
+      }
+    } else if (name === 'new_password' && touched.new_password) {
+      const error = validatePassword(value)
+      if (error) {
+        setErrors(prev => ({ ...prev, new_password: error }))
+      }
+    } else if (name === 'new_password_confirm' && touched.new_password_confirm) {
+      const error = value !== formData.new_password ? '两次密码不一致' : null
+      if (error) {
+        setErrors(prev => ({ ...prev, new_password_confirm: error }))
+      }
+    }
+  }
+
+  const handleSendVerifyCode = async () => {
+    await api.auth.sendEmailCode({
+      email: formData.email.trim(),
+      type: 'reset'
+    })
+  }
+
+  const handleRequestReset = async () => {
+    setTouched({ email: true, verification_code: true })
+
+    const newErrors: Record<string, string> = {}
+
+    const emailError = validateEmail(formData.email)
+    if (emailError) newErrors.email = emailError
+
+    if (!formData.verification_code || formData.verification_code.length !== 6) {
+      newErrors.verification_code = '请输入6位验证码'
+    }
+
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length === 0) {
+      setLoading(true)
+      try {
+        await api.auth.passwordReset({
+          email: formData.email.trim(),
+          verification_code: formData.verification_code.trim()
+        })
+        // 成功后跳转到提示查看邮件的页面
+        setStep(2)
+      } catch (error) {
+        console.error('[ResetForm] 请求重置失败:', error)
+        const errorMessage = getErrorMessage(error)
+        setErrors({ submit: errorMessage })
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleResetPassword = async () => {
+    setTouched({
+      new_password: true,
+      new_password_confirm: true
+    })
+
+    const newErrors: Record<string, string> = {}
+
+    const passwordError = validatePassword(formData.new_password)
+    if (passwordError) newErrors.new_password = passwordError
+
+    if (formData.new_password !== formData.new_password_confirm) {
+      newErrors.new_password_confirm = '两次密码不一致'
+    }
+
+    if (!formData.token) {
+      newErrors.token = '无效的重置链接'
+    }
+
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length === 0) {
+      setLoading(true)
+      try {
+        await api.auth.passwordResetConfirm({
+          email: formData.email.trim(),
+          token: formData.token.trim(),
+          new_password: formData.new_password,
+          new_password_confirm: formData.new_password_confirm
+        })
+        setStep(4) // 跳转到重置成功页面
+      } catch (error) {
+        console.error('[ResetForm] 重置密码失败:', error)
+        const errorMessage = getErrorMessage(error)
+        setErrors({ submit: errorMessage })
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const token = params.get('token')
+      const email = params.get('email')
+      if (token && email) {
+        setFormData(prev => ({ ...prev, token, email }))
+        setStep(3) // 直接跳转到设置新密码页面
+      }
+    }
+  }, [])
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      e.preventDefault()
+      if (step === 1) {
+        handleRequestReset()
+      } else if (step === 3) {
+        handleResetPassword()
+      }
+    }
+  }
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <AnimatePresence mode="wait">
+        {/* 步骤1：验证身份 */}
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+            onKeyPress={handleKeyPress}
+          >
+            <div className="text-center">
+              <h2 className="text-3xl font-black mb-2">
+                找回密码
+              </h2>
+              <p className="text-gray-400">
+                通过邮箱验证您的身份
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <PixelInput
+                label="注册邮箱"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="请输入注册时的邮箱"
+                icon="📧"
+                error={touched.email ? errors.email : ''}
+                autoComplete="email"
+                autoFocus
+              />
+
+              <VerificationInput
+                label="验证码"
+                name="verification_code"
+                value={formData.verification_code}
+                onChange={handleInputChange}
+                placeholder="请输入6位验证码"
+                icon="✉️"
+                error={touched.verification_code ? errors.verification_code : ''}
+                maxLength={6}
+                autoComplete="one-time-code"
+                onSendCode={handleSendVerifyCode}
+                email={formData.email}
+                type="reset"
+              />
+
+              {errors.submit && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-red-500/10 border border-red-500/20 rounded"
+                >
+                  <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+                </motion.div>
+              )}
+
+              <motion.button
+                className="w-full pixel-btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleRequestReset}
+                disabled={loading}
+                type="button"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    验证中...
+                  </span>
+                ) : (
+                  '下一步'
+                )}
+              </motion.button>
+
+              <p className="text-center text-sm text-gray-400">
+                想起密码了？
+                <Link href="/login" className="text-gold-500 hover:underline ml-1">
+                  返回登录
+                </Link>
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 步骤2：提示查看邮件 */}
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <motion.div
+                className="text-6xl mb-4"
+                animate={{
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
+              >
+                ✉️
+              </motion.div>
+              <h2 className="text-3xl font-black mb-2">
+                请查看您的邮箱
+              </h2>
+              <p className="text-gray-400">
+                重置密码链接已发送至
+              </p>
+              <p className="text-gold-500 font-bold text-lg mt-2">
+                {formData.email}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* 邮件提示框 */}
+              <div className="p-6 bg-gray-900/50 rounded-lg space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">📧</span>
+                  <div className="flex-1 space-y-2">
+                    <h3 className="font-bold text-white">操作步骤：</h3>
+                    <ol className="list-decimal list-inside space-y-1 text-gray-400 text-sm">
+                      <li>打开您的邮箱客户端或网页</li>
+                      <li>查找来自"平行世界的字符"的邮件</li>
+                      <li>点击邮件中的"重置密码"按钮</li>
+                      <li>在新页面中设置您的新密码</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* 重要提示 */}
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded">
+                <p className="text-sm text-yellow-500 flex items-start gap-2">
+                  <span>⚠️</span>
+                  <span>
+                    <strong>温馨提示：</strong>邮件可能会被归类到垃圾邮件文件夹，请同时检查垃圾箱。
+                    重置链接有效期为30分钟，请尽快完成操作。
+                  </span>
+                </p>
+              </div>
+
+              {/* 没收到邮件 */}
+              <div className="text-center space-y-3 pt-4">
+                <p className="text-gray-400 text-sm">
+                  没有收到邮件？
+                </p>
+                <motion.button
+                  className="px-4 py-2 text-sm border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setStep(1)
+                    setFormData(prev => ({ ...prev, verification_code: '' }))
+                  }}
+                  type="button"
+                >
+                  重新验证
+                </motion.button>
+              </div>
+
+              {/* 返回登录 */}
+              <p className="text-center text-sm text-gray-400 pt-4">
+                <Link href="/login" className="text-gold-500 hover:underline">
+                  返回登录页面
+                </Link>
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 步骤3：设置新密码（通过邮件链接进入）*/}
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+            onKeyPress={handleKeyPress}
+          >
+            <div className="text-center">
+              <h2 className="text-3xl font-black mb-2">
+                设置新密码
+              </h2>
+              <p className="text-gray-400">
+                请为您的账号设置一个安全的新密码
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <PixelInput
+                label="新密码"
+                name="new_password"
+                type="password"
+                value={formData.new_password}
+                onChange={handleInputChange}
+                placeholder="8-32位字母+数字"
+                icon="🔐"
+                error={touched.new_password ? errors.new_password : ''}
+                autoComplete="new-password"
+                showPasswordToggle
+                autoFocus
+              />
+
+              <PixelInput
+                label="确认新密码"
+                name="new_password_confirm"
+                type="password"
+                value={formData.new_password_confirm}
+                onChange={handleInputChange}
+                placeholder="再次输入新密码"
+                icon="🔐"
+                error={touched.new_password_confirm ? errors.new_password_confirm : ''}
+                autoComplete="new-password"
+                showPasswordToggle
+              />
+
+              <div className="p-4 bg-gray-900/50 rounded space-y-1 text-xs text-gray-400">
+                <p className="font-bold">密码要求：</p>
+                <p className={cn(
+                  formData.new_password.length >= 8 && formData.new_password.length <= 32
+                    ? 'text-green-500'
+                    : ''
+                )}>
+                  ✓ 8-32个字符
+                </p>
+                <p className={cn(
+                  /[a-zA-Z]/.test(formData.new_password) && /[0-9]/.test(formData.new_password)
+                    ? 'text-green-500'
+                    : ''
+                )}>
+                  ✓ 必须包含字母和数字
+                </p>
+              </div>
+
+              {errors.submit && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-red-500/10 border border-red-500/20 rounded"
+                >
+                  <p className="text-sm text-red-500 text-center">{errors.submit}</p>
+                </motion.div>
+              )}
+
+              <motion.button
+                className="w-full pixel-btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleResetPassword}
+                disabled={loading}
+                type="button"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    重置中...
+                  </span>
+                ) : (
+                  '重置密码'
+                )}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
+        // 在 AuthComponents.tsx 文件的末尾，确保正确的结构：
+
+        {/* 步骤4：重置成功 */}
+        {step === 4 && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6 text-center"
+          >
+            <motion.div
+              className="text-6xl"
+              animate={{
+                scale: [1, 1.2, 1],
+                rotate: [0, 10, -10, 0]
+              }}
+              transition={{ duration: 0.5 }}
+            >
+              ✅
+            </motion.div>
+
+            <div>
+              <h2 className="text-3xl font-black mb-2">
+                密码重置成功！
+              </h2>
+              <p className="text-gray-400">
+                您的新密码已生效，请使用新密码登录
+              </p>
+            </div>
+
+            <motion.button
+              className="w-full pixel-btn"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push('/login')}
+              type="button"
+            >
+              立即登录
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// 认证页面容器
+interface AuthPageProps {
+  type: 'login' | 'register' | 'reset'
+}
+
+export function AuthPage({ type }: AuthPageProps) {
+  return (
+    <div className="min-h-screen bg-[#0F0F1E] flex items-center justify-center p-4">
+      {/* 背景装饰 */}
+      <div className="fixed inset-0 pixel-grid opacity-10" />
+      <div className="fixed top-20 left-20 text-8xl opacity-5 animate-pulse">🔐</div>
+      <div className="fixed bottom-20 right-20 text-8xl opacity-5 animate-pulse" style={{ animationDelay: '1s' }}>🎯</div>
+
+      {/* Logo */}
+      <div className="fixed top-8 left-8">
+        <Link href="/" className="flex items-center gap-3 group">
+          <motion.div
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            className="transition-transform"
+          >
+            <PixelLogo />
+          </motion.div>
+          <span className="text-xl font-black text-gold-500 group-hover:text-gold-400 transition-colors">
+            平行世界
+          </span>
+        </Link>
+      </div>
+
+      {/* 公告 */}
+      {
+        type === 'login' && <motion.button
+          type="submit"
+          className={cn(
+            "fixed top-8 right-8 w-fit pixel-btn px-4 py-1",
+          )}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <Link href="/announcement">公告</Link>
+        </motion.button>
+      }
+
+      {/* 主内容 */}
+      <div className="relative z-10 w-full max-w-md">
+        <div className="pixel-card p-8 bg-[#0A1628]/95 backdrop-blur">
+          {type === 'login' && <LoginForm />}
+          {type === 'register' && <RegisterForm />}
+          {type === 'reset' && <ResetPasswordForm />}
+        </div>
+      </div>
+    </div>
+  )
+}
