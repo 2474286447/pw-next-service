@@ -21,6 +21,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   // 需要使用 BottomMenuBarLayout 布局的路由
   const bottomMenuBarRoutes = [
+    '/dashboard',
+    '/market',
+    '/assets',
     pathMap.TERRITORY,
   ];
 

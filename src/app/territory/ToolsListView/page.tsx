@@ -1,26 +1,27 @@
 /*
  * @Author: yy
  * @Date: 2025-09-22 20:43:12
- * @LastEditTime: 2025-09-24 22:01:25
+ * @LastEditTime: 2025-09-28 21:05:23
  * @LastEditors: yy
  * @Description: 
  */
 "use client"
 import { FixedHeader, SHOW_MENU_BAR_EVENT } from '@/components/BottomMenuBar/BottomMenuBarLayout';
 import { eventManager } from '@/utils/eventManager';
-import { getPixelResourceIcon, PIXEL_RESOURCE_NAMES, PIXEL_RESOURCE_SERVICE_KEYS, PIXEL_RESOURCE_TYPES, ResourceKey } from '@/utils/pixelResourceTool';
+import { getPixelResourceIcon, PIXEL_RESOURCE_SERVICE_KEYS, PIXEL_RESOURCE_TYPES, ResourceKey } from '@/utils/pixelResourceTool';
 import { useEffect, useState } from 'react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { pathMap } from '@/utils/pathMap';
-import { formatTimestampToString } from '@/utils/common';
 import { cn } from '@/lib/utils';
 import ToolsCard from './ToolsCard';
 import { useInventory } from '@/hooks/useInventory';
 import { useMyTools } from '@/hooks/useProduction';
 import { useAuth } from '@/hooks/useAuth';
+import gackImg from "@/public/icon/back.svg";
+import refetchImg from "@/public/icon/refetch.svg";
 
 /** 工具列表枚举 */
 export const getToolsEnum: () => {
@@ -135,10 +136,14 @@ const ToolsListView = () => {
                     {/* 返回 */}
                     <Link href={pathMap.TERRITORY}>
                         <Image
-                            width={10}
-                            height={18}
+                            width={20}
+                            height={20}
                             alt="back"
-                            src="https://lanhu-oss-proxy.lanhuapp.com/ps225cl61j7iwaj1vv4tto74qzd49mpw39839202a9-48bf-4acc-b415-3d5078677c1e"
+                            src={gackImg}
+                            style={{
+                                width: 20,
+                                height: 20,
+                            }}
                         />
                     </Link>
 
@@ -149,8 +154,12 @@ const ToolsListView = () => {
                         width={20}
                         height={20}
                         alt="refresh"
-                        src="https://lanhu-oss-proxy.lanhuapp.com/psl5mgjvdntppy8mjhyz4bpg2qx1lhyb1916cb8dd3-de17-4f0e-a130-87d9c4b3aa85"
+                        src={refetchImg}
                         className={toolsLoading ? "icon-spin" : ""}
+                        style={{
+                            width: 20,
+                            height: 20,
+                        }}
                         onClick={handleRefresh}
                     />
                 </div>

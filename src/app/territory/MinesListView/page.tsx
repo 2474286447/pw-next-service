@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-22 20:32:21
- * @LastEditTime: 2025-09-27 21:02:32
+ * @LastEditTime: 2025-09-28 21:32:36
  * @LastEditors: yy
  * @Description: 
  */
@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { useMyLands } from "@/hooks/useLands";
 import { type Land } from "@/types/assets";
 import { formatResource } from "@/utils/common";
+import gackImg from "@/public/icon/back.svg";
+import refetchImg from "@/public/icon/refetch.svg";
 
 /** 土地列表枚举 */
 export const getMinesEnum: () => {
@@ -145,10 +147,14 @@ const MinesListView = () => {
                     {/* 返回 */}
                     <Link href={pathMap.TERRITORY}>
                         <Image
-                            width={10}
-                            height={18}
+                            width={20}
+                            height={20}
                             alt="back"
-                            src="https://lanhu-oss-proxy.lanhuapp.com/ps225cl61j7iwaj1vv4tto74qzd49mpw39839202a9-48bf-4acc-b415-3d5078677c1e"
+                            src={gackImg}
+                            style={{
+                                width: 20,
+                                height: 20,
+                            }}
                         />
                     </Link>
 
@@ -159,8 +165,12 @@ const MinesListView = () => {
                         width={20}
                         height={20}
                         alt="refresh"
-                        src="https://lanhu-oss-proxy.lanhuapp.com/psl5mgjvdntppy8mjhyz4bpg2qx1lhyb1916cb8dd3-de17-4f0e-a130-87d9c4b3aa85"
+                        src={refetchImg}
                         className={refreshing ? "icon-spin" : ""}
+                        style={{
+                            width: 20,
+                            height: 20,
+                        }}
                         onClick={handleRefresh}
                     />
                 </div>

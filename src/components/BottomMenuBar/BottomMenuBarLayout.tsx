@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-19 20:55:05
- * @LastEditTime: 2025-09-22 22:21:38
+ * @LastEditTime: 2025-09-28 21:48:30
  * @LastEditors: yy
  * @Description: 
  */
@@ -13,6 +13,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { eventManager } from '@/utils/eventManager';
 import { ErrorBoundary } from '../ErrorBoundary';
+import { pathMap } from '@/utils/pathMap';
+import Link from 'next/link';
+import Image from 'next/image';
+import homeImg from "@/public/icon/home.svg";
+import marketImg from "@/public/icon/market.svg";
+import territoryImg from "@/public/icon/territory.svg";
+import assetsImg from "@/public/icon/assets.svg";
+import mineImg from "@/public/icon/mine.svg";
+import { usePathname } from 'next/navigation';
+
 
 export const SHOW_MENU_BAR_EVENT = {
     SHOW: "showMenuBar",
@@ -27,6 +37,8 @@ interface BottomMenuBarLayoutProps {
 const BottomMenuBarLayout: React.FC<BottomMenuBarLayoutProps> = (props) => {
     const { children } = props;
 
+    const pathname = usePathname();
+
     // 菜单栏显示状态
     const [showMenuBar, setShowMenuBar] = useState(true)
 
@@ -34,28 +46,28 @@ const BottomMenuBarLayout: React.FC<BottomMenuBarLayoutProps> = (props) => {
     const menuList = [
         {
             name: "首页",
-            icon: "",
-            path: "",
+            icon: homeImg,
+            path: "/dashboard",
         },
         {
             name: "市场",
-            icon: "",
-            path: "",
+            icon: marketImg,
+            path: "/market",
         },
         {
             name: "领地",
-            icon: "",
-            path: "",
+            icon: territoryImg,
+            path: pathMap.TERRITORY,
         },
         {
             name: "资产",
-            icon: "",
-            path: "",
+            icon: assetsImg,
+            path: "/assets",
         },
         {
             name: "我的",
-            icon: "",
-            path: "",
+            icon: mineImg,
+            path: "/dashboard/settings",
         },
     ]
 
@@ -87,10 +99,31 @@ const BottomMenuBarLayout: React.FC<BottomMenuBarLayoutProps> = (props) => {
             >
                 {
                     menuList.map((item, index) => {
-                        return <div key={index} className="flex flex-col items-center gap-[2px]">
-                            <div className="w-[26px] h-[26px] rounded-[10px] bg-[#31261A]"></div>
+                        // 是否选中
+                        const isSelected = pathname === item.path;
+
+                        return <Link href={item.path} key={index} className={cn(
+                            "flex flex-col items-center gap-[2px]",
+                            isSelected ? "text-[#F7921B]" : "text-[#E7E7E7]"
+                        )}>
+                            <div className={cn(
+                                "w-[26px] h-[26px] rounded-[10px] bg-[#31261A] flex items-center justify-center",
+                                isSelected ? "bg-[#F7921B]" : "bg-[#31261A]"
+                            )}>
+                                <Image
+                                    width={15}
+                                    height={15}
+                                    alt="refresh"
+                                    src={item.icon}
+                                    style={{
+                                        width: 15,
+                                        height: 15,
+                                        filter: pathname === item.path ? "brightness(.2)" : "invert(1)"
+                                    }}
+                                />
+                            </div>
                             <div className="text-[#E7E7E7] text-[12px]">{item.name}</div>
-                        </div>
+                        </Link>
                     })
                 }
             </motion.aside>

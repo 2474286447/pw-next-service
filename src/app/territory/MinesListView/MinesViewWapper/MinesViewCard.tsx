@@ -8,6 +8,7 @@ import { useState } from "react";
 import Image from 'next/image';
 import bg1Img from "@/public/bg1.png";
 import bg2Img from "@/public/bg2.png";
+import { useRouter } from "next/navigation";
 
 /** 矿场类型 */
 type MinesType = PIXEL_RESOURCE_TYPES.WOOD | PIXEL_RESOURCE_TYPES.IRON_ORE | PIXEL_RESOURCE_TYPES.FARMLAND | PIXEL_RESOURCE_TYPES.METEORITE | PIXEL_RESOURCE_TYPES.STONE;
@@ -52,12 +53,14 @@ interface MinesCardProps {
 const MinesCard: React.FC<MinesCardProps> = (props) => {
     const { data, key } = props;
 
+    const router = useRouter();
+
     // 领取成功提示显示状态
     const [isHarvestSuccess, setIsHarvestSuccess] = useState(false);
 
     // 处理购买土地事件
     const handleBuyLand = () => {
-        console.log('购买土地');
+        router.push("/market")
     }
     // 处理领取事件
     const handleHarvest = (disabled: boolean) => {
