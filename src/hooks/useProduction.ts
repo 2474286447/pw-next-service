@@ -41,45 +41,45 @@ export function useMyTools(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 30000 } = options || {}
-  
+
   const [tools, setTools] = useState<Tool[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<any>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchTools = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useMyTools] Fetching tools with page_size: 200')
-      
+
       // 初始请求
       let allTools: Tool[] = []
       let currentPage = 1
       let hasNext = true
       let totalStats = null
-      
+
       // 循环获取所有页面
-      while (hasNext && currentPage <= 10) { // 最多获取10页，防止无限循环
+      while (hasNext) {
         console.log(`[useMyTools] Fetching page ${currentPage}`)
-        
+
         const response = await productionApi.tools.getMyTools({
           page: currentPage,
           page_size: 200  // 尝试200，但后端可能限制为20
         })
-        
+
         console.log(`[useMyTools] Page ${currentPage} response:`, {
           count: response?.count,
           resultsLength: response?.results?.length,
           next: response?.next
         })
-        
+
         if (response?.results) {
           allTools = [...allTools, ...response.results]
           totalStats = response.stats // 使用最新的统计信息
@@ -89,16 +89,16 @@ export function useMyTools(options?: {
           hasNext = false
         }
       }
-      
+
       setTools(allTools)
       setStats(totalStats)
-      
+
       console.log(`[useMyTools] 成功获取所有工具:`, {
         总数: totalStats?.total_count || allTools.length,
         实际获取: allTools.length,
         页数: currentPage - 1
       })
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useMyTools] Error:', err)
@@ -109,25 +109,25 @@ export function useMyTools(options?: {
       fetchingRef.current = false
     }
   }, [enabled, tools])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchTools()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchTools()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchTools])
-  
+
   return {
     tools,
     loading,
@@ -148,33 +148,33 @@ export function useMyResources(options?: {
   autoRefresh?: boolean
   refreshInterval?: number
 }) {
-  const { 
-    enabled = true, 
-    useStats = false, 
-    autoRefresh = false, 
-    refreshInterval = 60000 
+  const {
+    enabled = true,
+    useStats = false,
+    autoRefresh = false,
+    refreshInterval = 60000
   } = options || {}
-  
+
   const [resources, setResources] = useState<ResourceBalance | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchResources = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useMyResources] Fetching resources, useStats:', useStats)
-      
+
       if (useStats) {
         const response = await productionApi.resources.getResourceStats()
         console.log('[useMyResources] Stats response:', response)
-        
+
         const data = response?.data || response
         if (data?.resources) {
           const balance: ResourceBalance = {
@@ -200,13 +200,13 @@ export function useMyResources(options?: {
       } else {
         const response = await productionApi.resources.getMyResources()
         console.log('[useMyResources] Resources response:', response)
-        
+
         if (response?.results) {
           const balance: ResourceBalance = {
             wood: 0, iron: 0, stone: 0, yld: 0,
             grain: 0, food: 0, seed: 0, brick: 0
           }
-          
+
           response.results.forEach((resource: any) => {
             const amount = parseFloat(resource.available_amount || resource.amount || '0')
             if (resource.resource_type === 'food' || resource.resource_type === 'grain') {
@@ -216,7 +216,7 @@ export function useMyResources(options?: {
               balance[resource.resource_type as keyof ResourceBalance] = amount
             }
           })
-          
+
           setResources(balance)
         } else {
           console.warn('[useMyResources] Unexpected response format:', response)
@@ -228,7 +228,7 @@ export function useMyResources(options?: {
           }
         }
       }
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useMyResources] Error:', err)
@@ -244,25 +244,25 @@ export function useMyResources(options?: {
       fetchingRef.current = false
     }
   }, [enabled, useStats, resources])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchResources()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchResources()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchResources])
-  
+
   return {
     resources,
     loading,
@@ -282,25 +282,25 @@ export function useResourceStats(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 60000 } = options || {}
-  
+
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchStats = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useResourceStats] Fetching stats...')
       const response = await productionApi.resources.getResourceStats()
       console.log('[useResourceStats] Raw response:', response)
-      
+
       setStats(response)
       hasFetchedRef.current = true
     } catch (err: any) {
@@ -311,25 +311,25 @@ export function useResourceStats(options?: {
       fetchingRef.current = false
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchStats()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchStats()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchStats])
-  
+
   return {
     stats,
     loading,
@@ -349,46 +349,46 @@ export function useMiningSessions(options?: {
   autoRefresh?: boolean
   refreshInterval?: number
 }) {
-  const { 
-    status = 'active', 
-    enabled = true, 
-    autoRefresh = false, 
-    refreshInterval = 30000 
+  const {
+    status = 'active',
+    enabled = true,
+    autoRefresh = false,
+    refreshInterval = 30000
   } = options || {}
-  
+
   const [sessions, setSessions] = useState<MiningSession[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchSessions = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useMiningSessions] Fetching sessions with page_size: 200')
-      
+
       // 重要修复：使用 page_size: 200
       const response = await productionApi.mining.getMySessions({
         status,
         page_size: 200  // 从默认的 20 改为 200
       })
-      
+
       console.log('[useMiningSessions] Raw response:', response)
-      
+
       if (response?.results) {
         setSessions(response.results)
-        
+
         // 添加警告
         if (response.next) {
           console.warn('[useMiningSessions] 警告：会话数量超过200个')
           toast.error('会话数量过多，部分会话可能未显示')
         }
-        
+
         console.log(`[useMiningSessions] 成功获取 ${response.results.length} 个会话`)
       } else if (Array.isArray(response)) {
         setSessions(response)
@@ -396,7 +396,7 @@ export function useMiningSessions(options?: {
         console.warn('[useMiningSessions] Unexpected response format:', response)
         setSessions([])
       }
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useMiningSessions] Error:', err)
@@ -407,25 +407,25 @@ export function useMiningSessions(options?: {
       fetchingRef.current = false
     }
   }, [enabled, status, sessions])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchSessions()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchSessions()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchSessions])
-  
+
   return {
     sessions,
     loading,
@@ -445,40 +445,40 @@ export function useUserLands(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 60000 } = options || {}
-  
+
   const [lands, setLands] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchLands = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useUserLands] Fetching lands with page_size: 200')
-      
+
       // 重要修复：使用 page_size: 200
       const response = await productionApi.lands.getAvailableLands({
         ownership: 'mine',
         page_size: 200  // 从默认的 20 改为 200
       })
-      
+
       console.log('[useUserLands] Response from getAvailableLands:', response)
-      
+
       if (response?.data?.results) {
         setLands(response.data.results)
-        
+
         // 添加警告
         if (response.data.next) {
           console.warn('[useUserLands] 警告：土地数量超过200个')
           toast.error('土地数量过多，部分土地可能未显示')
         }
-        
+
         console.log(`[useUserLands] 成功获取 ${response.data.results.length} 块土地`)
       } else if (response?.results) {
         setLands(response.results)
@@ -488,16 +488,16 @@ export function useUserLands(options?: {
         console.warn('[useUserLands] Unexpected response format:', response)
         setLands([])
       }
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useUserLands] Error fetching lands:', err)
-      
+
       // 尝试备用接口
       try {
         console.log('[useUserLands] Trying alternate endpoint getUserLands...')
         const alternateResponse = await productionApi.lands.getUserLands()
-        
+
         if (alternateResponse?.data?.results) {
           setLands(alternateResponse.data.results)
         } else if (alternateResponse?.results) {
@@ -514,25 +514,25 @@ export function useUserLands(options?: {
       fetchingRef.current = false
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchLands()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchLands()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchLands])
-  
+
   return {
     lands,
     loading,
@@ -549,27 +549,27 @@ export function useUserLands(options?: {
 export function useStartSelfMining() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const startMining = useCallback(async (data: StartSelfMiningRequest) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.startSelfMining(data)
       toast.success('挖矿已开始！')
       return response
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 
-                          err?.response?.data?.detail || 
-                          err?.message || 
-                          '开始挖矿失败'
+      const errorMessage = err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.message ||
+        '开始挖矿失败'
       setError(errorMessage)
       throw err
     } finally {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     startMining,
     loading,
@@ -580,11 +580,11 @@ export function useStartSelfMining() {
 export function useStopProduction() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const stopProduction = useCallback(async (sessionId: number) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.stopProduction({
         session_id: sessionId
@@ -598,7 +598,7 @@ export function useStopProduction() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     stopProduction,
     loading,
@@ -609,11 +609,11 @@ export function useStopProduction() {
 export function useCollectOutput() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const collectOutput = useCallback(async (sessionId: number) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.collectOutput({
         session_id: sessionId
@@ -627,7 +627,7 @@ export function useCollectOutput() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     collectOutput,
     loading,
@@ -638,11 +638,11 @@ export function useCollectOutput() {
 export function useStopAllSessions() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const stopAll = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.stopAllSessions()
       const stoppedCount = response?.data?.stopped_count || response?.stopped_count || 0
@@ -657,7 +657,7 @@ export function useStopAllSessions() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     stopAll,
     loading,
@@ -670,11 +670,11 @@ export function useStopAllSessions() {
 export function useSynthesizeTool() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const synthesize = useCallback(async (data: SynthesizeToolRequest) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.synthesis.synthesizeTool(data)
       toast.success(`成功合成 ${data.quantity} 个工具！`)
@@ -688,7 +688,7 @@ export function useSynthesizeTool() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     synthesize,
     loading,
@@ -704,28 +704,28 @@ export function useGrainStatus(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 60000 } = options || {}
-  
+
   const [status, setStatus] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchStatus = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useGrainStatus] Fetching status...')
       const response = await productionApi.stats.checkFoodStatus()
       console.log('[useGrainStatus] Raw response:', response)
-      
+
       const data = response?.data || response
       setStatus(data)
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useGrainStatus] Error:', err)
@@ -735,25 +735,25 @@ export function useGrainStatus(options?: {
       fetchingRef.current = false
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchStatus()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchStatus()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchStatus])
-  
+
   return {
     status,
     loading,
@@ -773,28 +773,28 @@ export function useYLDStatus(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 60000 } = options || {}
-  
+
   const [status, setStatus] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchStatus = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useYLDStatus] Fetching status...')
       const response = await productionApi.yld.getSystemStatus()
       console.log('[useYLDStatus] Raw response:', response)
-      
+
       const data = response?.data || response
       setStatus(data)
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useYLDStatus] Error:', err)
@@ -804,25 +804,25 @@ export function useYLDStatus(options?: {
       fetchingRef.current = false
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchStatus()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         fetchStatus()
       }
     }, refreshInterval)
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval, fetchStatus])
-  
+
   return {
     status,
     loading,
@@ -840,11 +840,11 @@ export function useMiningPreCheck() {
   const [checkResult, setCheckResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const performCheck = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.preCheck()
       const data = response?.data || response
@@ -857,7 +857,7 @@ export function useMiningPreCheck() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     checkResult,
     loading,
@@ -874,14 +874,14 @@ export function useMiningSummary(options?: {
   refreshInterval?: number
 }) {
   const { enabled = true, autoRefresh = false, refreshInterval = 60000 } = options || {}
-  
+
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fetchingRef = useRef(false)
   const lastFetchRef = useRef<number>(0)
   const hasFetchedRef = useRef(false)
-  
+
   const getDefaultSummary = () => ({
     active_sessions: {
       count: 0,
@@ -919,33 +919,33 @@ export function useMiningSummary(options?: {
       current_hourly_rate: 0
     }
   })
-  
+
   const fetchSummary = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     const now = Date.now()
     if (now - lastFetchRef.current < 10000) {
       console.log('[useMiningSummary] Skipping - too frequent')
       return
     }
-    
+
     fetchingRef.current = true
     lastFetchRef.current = now
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useMiningSummary] Fetching summary...')
       const response = await productionApi.mining.getSummary()
       console.log('[useMiningSummary] Raw response:', response)
-      
+
       const data = response?.data || response
       if (data) {
         setSummary(data)
       } else {
         setSummary(getDefaultSummary())
       }
-      
+
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useMiningSummary] Error:', err)
@@ -957,26 +957,26 @@ export function useMiningSummary(options?: {
       fetchingRef.current = false
     }
   }, [enabled, summary])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current && !summary) {
       fetchSummary()
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (!autoRefresh || !enabled) return
-    
+
     const interval = setInterval(() => {
       if (!fetchingRef.current) {
         lastFetchRef.current = 0
         fetchSummary()
       }
     }, Math.max(refreshInterval, 60000))
-    
+
     return () => clearInterval(interval)
   }, [autoRefresh, enabled, refreshInterval])
-  
+
   return {
     summary,
     loading,
@@ -995,17 +995,17 @@ export function useSessionRateHistory(sessionId: number | null, options?: {
   enabled?: boolean
 }) {
   const { enabled = true } = options || {}
-  
+
   const [history, setHistory] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const fetchHistory = useCallback(async () => {
     if (!enabled || !sessionId) return
-    
+
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.mining.getSessionRateHistory(sessionId)
       const data = response?.data || response
@@ -1017,13 +1017,13 @@ export function useSessionRateHistory(sessionId: number | null, options?: {
       setLoading(false)
     }
   }, [enabled, sessionId])
-  
+
   useEffect(() => {
     if (enabled && sessionId) {
       fetchHistory()
     }
   }, [enabled, sessionId, fetchHistory])
-  
+
   return {
     history,
     loading,
@@ -1038,23 +1038,23 @@ export function useAvailableLands(options?: {
   enabled?: boolean
 }) {
   const { enabled = true } = options || {}
-  
+
   const [lands, setLands] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const fetchLands = useCallback(async () => {
     if (!enabled) return
-    
+
     setLoading(true)
     setError(null)
-    
+
     try {
       if (productionApi.lands?.getAvailableLands) {
         const response = await productionApi.lands.getAvailableLands({
           page_size: 200  // 修复：增加 page_size
         })
-        
+
         if (response?.results) {
           setLands(response.results)
         } else if (response?.data?.results) {
@@ -1074,13 +1074,13 @@ export function useAvailableLands(options?: {
       setLoading(false)
     }
   }, [enabled])
-  
+
   useEffect(() => {
     if (enabled) {
       fetchLands()
     }
   }, [enabled, fetchLands])
-  
+
   return {
     lands,
     loading,
@@ -1093,17 +1093,17 @@ export function useLandMiningInfo(landId: string | null, options?: {
   enabled?: boolean
 }) {
   const { enabled = true } = options || {}
-  
+
   const [info, setInfo] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const fetchInfo = useCallback(async () => {
     if (!enabled || !landId) return
-    
+
     setLoading(true)
     setError(null)
-    
+
     try {
       if (productionApi.lands?.getLandMiningInfo) {
         const response = await productionApi.lands.getLandMiningInfo(landId)
@@ -1119,13 +1119,13 @@ export function useLandMiningInfo(landId: string | null, options?: {
       setLoading(false)
     }
   }, [enabled, landId])
-  
+
   useEffect(() => {
     if (enabled && landId) {
       fetchInfo()
     }
   }, [enabled, landId, fetchInfo])
-  
+
   return {
     info,
     loading,
@@ -1137,11 +1137,11 @@ export function useLandMiningInfo(landId: string | null, options?: {
 export function useHandleYLDExhausted() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const handleExhausted = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await productionApi.yld.handleExhausted()
       toast.success('YLD耗尽处理完成')
@@ -1155,7 +1155,7 @@ export function useHandleYLDExhausted() {
       setLoading(false)
     }
   }, [])
-  
+
   return {
     handleExhausted,
     loading,
@@ -1170,35 +1170,35 @@ export function useCollectPending(options?: {
   enabled?: boolean
 }) {
   const { resourceType, enabled = true } = options || {}
-  
+
   const [pendingData, setPendingData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchPending = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useCollectPending] Fetching pending rewards...')
-      
+
       const params = resourceType ? { resource_type: resourceType } : {}
       const response = await productionApi.mining.getCollectPending(params)
-      
+
       console.log('[useCollectPending] Response:', response)
-      
+
       const data = response?.data || response
       setPendingData(data)
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useCollectPending] Error:', err)
       setError(err?.message || '获取待收取收益失败')
-      
+
       if (!pendingData) {
         setPendingData({
           total_pending: 0,
@@ -1215,13 +1215,13 @@ export function useCollectPending(options?: {
       fetchingRef.current = false
     }
   }, [enabled, resourceType, pendingData])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchPending()
     }
   }, [enabled])
-  
+
   return {
     pendingData,
     loading,
@@ -1241,37 +1241,37 @@ export function useHourlySettlement(options?: {
   enabled?: boolean
 }) {
   const { hours = 24, resourceType = 'yld', enabled = true } = options || {}
-  
+
   const [settlementData, setSettlementData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
   const fetchingRef = useRef(false)
-  
+
   const fetchSettlement = useCallback(async () => {
     if (!enabled || fetchingRef.current) return
-    
+
     fetchingRef.current = true
     setLoading(true)
     setError(null)
-    
+
     try {
       console.log('[useHourlySettlement] Fetching settlement status...')
-      
-      const response = await productionApi.mining.getHourlySettlement({ 
-        hours, 
-        resource_type: resourceType 
+
+      const response = await productionApi.mining.getHourlySettlement({
+        hours,
+        resource_type: resourceType
       })
-      
+
       console.log('[useHourlySettlement] Response:', response)
-      
+
       const data = response?.data || response
       setSettlementData(data)
       hasFetchedRef.current = true
     } catch (err: any) {
       console.error('[useHourlySettlement] Error:', err)
       setError(err?.message || '获取结算状态失败')
-      
+
       if (!settlementData) {
         setSettlementData({
           resource_type: resourceType,
@@ -1286,13 +1286,13 @@ export function useHourlySettlement(options?: {
       fetchingRef.current = false
     }
   }, [enabled, hours, resourceType, settlementData])
-  
+
   useEffect(() => {
     if (enabled && !hasFetchedRef.current) {
       fetchSettlement()
     }
   }, [enabled])
-  
+
   return {
     settlementData,
     loading,
