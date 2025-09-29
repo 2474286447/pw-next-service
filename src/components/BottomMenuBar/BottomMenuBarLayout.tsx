@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-19 20:55:05
- * @LastEditTime: 2025-09-28 21:48:30
+ * @LastEditTime: 2025-09-29 20:24:04
  * @LastEditors: yy
  * @Description: 
  */
@@ -47,7 +47,7 @@ const BottomMenuBarLayout: React.FC<BottomMenuBarLayoutProps> = (props) => {
         {
             name: "首页",
             icon: homeImg,
-            path: "/dashboard",
+            path: pathMap.HOME,
         },
         {
             name: "市场",
@@ -140,9 +140,9 @@ const FixedHeader = (props: {
     return <ErrorBoundary>
         <AnimatePresence>
             <motion.aside
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
+                initial={{ y: "-100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
                 className={cn("fixed top-0 left-0 z-10 w-full bg-[#1A1A1A] p-[15px]", props.warpperClassName)}
             >
                 {props.children}

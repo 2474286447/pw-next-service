@@ -2,6 +2,8 @@
 
 /** 定义路由 */
 export const pathMap = {
+    /** 首页 */
+    HOME: '/home',
     /** 领地页 */
     TERRITORY: '/territory',
     /** 领地页-我的工具 */

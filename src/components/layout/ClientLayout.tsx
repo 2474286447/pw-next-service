@@ -24,6 +24,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     '/dashboard',
     '/market',
     '/assets',
+    pathMap.HOME,
     pathMap.TERRITORY,
   ];
 
