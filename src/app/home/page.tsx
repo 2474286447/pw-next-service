@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-28 21:09:35
- * @LastEditTime: 2025-09-29 21:49:44
+ * @LastEditTime: 2025-10-09 21:37:29
  * @LastEditors: yy
  * @Description: 
  */
@@ -16,10 +16,13 @@ import Image from 'next/image';
 import refetchImg from "@/public/icon/refetch.svg";
 import { useState } from 'react';
 import { getPixelResourceIcon, PIXEL_RESOURCE_TYPES } from '@/utils/pixelResourceTool';
-import { color, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { pathMap } from '@/utils/pathMap';
+import { useRouter } from 'next/navigation';
 
 /** 首页 */
 const Home = () => {
+    const router = useRouter();
     // 刷新图标状态
     const [refreshing, setRefreshing] = useState(false);
 
@@ -157,7 +160,9 @@ const Home = () => {
                 transition={{ delay: 0.3 }}
                 className='flex items-center justify-around gap-[10px]'
             >
-                <div className='flex flex-col items-center gap-[15px]'>
+                <div className='flex flex-col items-center gap-[15px]' onClick={() => {
+                    router.push(pathMap.HOME_TDBSHOP)
+                }}>
                     <div className='w-[50px] h-[50px] bg-gradient-to-b from-[#151412] to-[#252421] rounded-[15px] p-[12px]'>
                         {/* 图标 */}
                     </div>
