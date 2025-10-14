@@ -202,6 +202,8 @@ const paymentOrder = () => {
                 </PixelButton>
             </motion.aside>
 
+            <Link href={pathMap.TDBSHOP_ORDERVALIDATION}>订单验证页》》》</Link>
+
 
             {/* 取消订单确认弹窗 */}
             <PixelTipsModal
