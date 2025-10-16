@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-28 21:09:35
- * @LastEditTime: 2025-10-09 21:37:29
+ * @LastEditTime: 2025-10-16 20:30:19
  * @LastEditors: yy
  * @Description: 
  */
@@ -178,7 +178,9 @@ const Home = () => {
                         转账
                     </div>
                 </div>
-                <div className='flex flex-col items-center gap-[15px]'>
+                <div className='flex flex-col items-center gap-[15px]' onClick={() => {
+                    router.push(pathMap.TDBSHOP_TDBORDER)
+                }}>
                     <div className='w-[50px] h-[50px] bg-gradient-to-b from-[#151412] to-[#252421] rounded-[15px] p-[12px]'>
                         {/* 图标 */}
                     </div>

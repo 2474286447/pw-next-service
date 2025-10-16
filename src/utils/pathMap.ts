@@ -14,6 +14,10 @@ export const pathMap = {
     TDBSHOP_ORDERVALIDATION: '/home/TDBShop/orderVerification',
     /** TDB商城-订单审核 */
     TDBSHOP_ORDERREVIEW: '/home/TDBShop/orderReview',
+    /** TDB商城-TDB订单 */
+    TDBSHOP_TDBORDER: '/home/TDBShop/TDBOrder',
+    /** TDB商城-退货退款 */
+    TDBSHOP_TDBORDER_REFUND: '/home/TDBShop/refundOrder',
     /** 领地页 */
     TERRITORY: '/territory',
     /** 领地页-我的工具 */
