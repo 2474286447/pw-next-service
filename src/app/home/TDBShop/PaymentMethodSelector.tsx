@@ -13,17 +13,25 @@ import Image from 'next/image'
 import { cn } from "@/lib/utils";
 
 export type MethodType = 'wechat' | 'alipay' | 'bank'
+// 获取对应支付方式文字
+export const getMethodTypeLabel = (methodKey: MethodType) => {
+    return {
+        wechat: '微信支付',
+        alipay: '支付宝支付',
+        bank: '银行转账',
+    }[methodKey]
+}
 
 interface Props {
-    selected: MethodType
+    selected?: MethodType
     onSelect: (method: MethodType) => void
 }
 
 export default function PaymentMethodSelector({ selected, onSelect }: Props) {
     const methods: { key: MethodType; label: string; icon: StaticImageData }[] = [
-        { key: 'wechat', label: '微信支付', icon: wechatPayImg },
-        { key: 'alipay', label: '支付宝支付', icon: alipayImg },
-        { key: 'bank', label: '银行转账', icon: bankImg },
+        { key: 'wechat', label: getMethodTypeLabel('wechat'), icon: wechatPayImg },
+        { key: 'alipay', label: getMethodTypeLabel('alipay'), icon: alipayImg },
+        { key: 'bank', label: getMethodTypeLabel('bank'), icon: bankImg },
     ]
 
     return (

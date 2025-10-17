@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-10-14 20:52:24
- * @LastEditTime: 2025-10-14 21:29:33
+ * @LastEditTime: 2025-10-17 22:05:40
  * @LastEditors: yy
  * @Description: 
  */
@@ -13,10 +13,11 @@ import { X } from 'lucide-react';
 
 interface MultiImageUploaderProps {
     max?: number;
+    placeholder?: string;
     onChange?: (images: File[]) => void;
 }
 
-const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, onChange }) => {
+const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, placeholder = "点击上传", onChange }) => {
     const [images, setImages] = useState<File[]>([]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,7 +30,9 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, onChan
     };
 
     const handleRemove = (index: number) => {
-        setImages(prev => prev.filter((_, i) => i !== index));
+        const updatedImages = images.filter((_, i) => i !== index);
+        setImages(updatedImages);
+        onChange?.(updatedImages);
     };
 
     return (
@@ -38,13 +41,13 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, onChan
             {images.map((file, index) => {
                 const url = URL.createObjectURL(file);
                 return (
-                    <div key={index} className="relative w-24 h-24 rounded overflow-hidden">
+                    <div key={index} className="relative w-[85px] h-[85px] rounded overflow-hidden bg-[#00000066]">
                         <Image
                             src={url}
                             alt={`preview-${index}`}
-                            layout="fill"
-                            objectFit="cover"
-                            className="rounded"
+                            width={85}
+                            height={85}
+                            className="rounded absolute inset-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                         />
                         <button
                             onClick={() => handleRemove(index)}
@@ -60,7 +63,9 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, onChan
             {images.length < max && (
                 <label className="w-24 h-24 bg-gray-700 border-2 border border-gray-600 flex items-center justify-center flex-col text-gray-400 text-xl rounded cursor-pointer hover:border-gray-400">
                     <div className='text-[40px]'>+</div>
-                    <div className='text-center text-[15px] text-[#666666]'>点击上传</div>
+                    <div className='text-center text-[15px] text-[#666666]'>
+                        {placeholder}
+                    </div>
                     <input
                         type="file"
                         accept="image/*"

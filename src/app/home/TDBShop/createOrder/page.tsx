@@ -8,7 +8,7 @@
 "use client"
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import PaymentMethodSelector, { type MethodType } from './PaymentMethodSelector'
+import PaymentMethodSelector, { type MethodType } from '../PaymentMethodSelector'
 import { FixedHeader, SHOW_MENU_BAR_EVENT } from '@/components/BottomMenuBar/BottomMenuBarLayout'
 import Link from 'next/link'
 import { pathMap } from '@/utils/pathMap'
