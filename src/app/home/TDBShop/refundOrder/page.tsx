@@ -12,17 +12,22 @@ import toast from 'react-hot-toast'
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import RefundMethodDrawer from './RefundMethodDrawer';
-import { getMethodTypeLabel, MethodType } from '../PaymentMethodSelector';
+import { getMethodTypeInfo, MethodType } from '../PaymentMethodSelector';
+import PixelBottomDrawer from '@/components/shared/PixelBottomDrawer';
 
 /** 退货退款 */
 const refundOrder = () => {
     const [copied, setCopied] = useState(false)
 
+    // 页面状态（是否提交退款）
+    const [isSubmitted, setIsSubmitted] = useState(false);
     // 选中的支付方式
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<MethodType>();
 
     // 退款方式抽屉显示状态
     const [refundMethodDrawerOpen, setRefundMethodDrawerOpen] = useState(false);
+    // 取消退货抽屉显示状态
+    const [cancelRefundDrawerOpen, setCancelRefundDrawerOpen] = useState(false);
 
     const handleCopy = () => {
         navigator.clipboard.writeText("测试")
@@ -44,7 +49,13 @@ const refundOrder = () => {
             toast.error('请选择退款方式')
             return;
         }
-        toast.success('退货成功')
+        setIsSubmitted(true);
+    }
+
+    // 处理取消退货提交事件
+    const handleCancel = () => {
+        setCancelRefundDrawerOpen(false);
+        setIsSubmitted(false);
     }
 
     useEffect(() => {
@@ -53,6 +64,9 @@ const refundOrder = () => {
             eventManager.emit(SHOW_MENU_BAR_EVENT.SHOW);
         }
     }, []);
+
+    // 对应支付方式info
+    const paymentMethodInfo = getMethodTypeInfo(selectedPaymentMethod);
 
     return (
         <>
@@ -76,18 +90,22 @@ const refundOrder = () => {
                             />
                         </Link>
 
-                        <div className='text-[#E7E7E7] text-[16px]'>退货退款</div>
+                        <div className='text-[#E7E7E7] text-[16px]'>
+                            {
+                                isSubmitted ? "退款审核中" : "退货退款"
+                            }
+                        </div>
                         <div></div>
                     </div>
                 </FixedHeader>
 
                 <div className="bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-[10px] pb-[20px] space-y-6 mb-[15px]">
                     {/* 商品信息 */}
-                    <div className="flex gap-[8px] px-[6px]">
+                    <div className="flex gap-[15px] px-[6px]">
                         <GoodsIcon imgSrc='' />
                         <div className='flex-1 flex flex-col gap-[12px]'>
                             <div className="text-sm mb-[8px]">商品名称</div>
-                            <div className="text-xs flex items-center justify-between">
+                            <div className="text-xs flex items-center">
                                 <div className='text-[12px] text-[#999999]'>
                                     商品数量：
                                 </div>
@@ -95,7 +113,7 @@ const refundOrder = () => {
                                     x3
                                 </div>
                             </div>
-                            <div className="text-xs flex items-center justify-between">
+                            <div className="text-xs flex items-center">
                                 <div className='text-[12px] text-[#999999]'>
                                     TDB数量：
                                 </div>
@@ -151,16 +169,33 @@ const refundOrder = () => {
                             退款方式
                         </div>
                         {
-                            selectedPaymentMethod
-                                ? <div className='text-[14px] text-[#999999]'>
-                                    {getMethodTypeLabel(selectedPaymentMethod)}
-                                </div>
-                                : <div className='text-[14px] text-[#999999]'>
-                                    添加退款方式&nbsp;&nbsp;&gt;
-                                </div>
+                            <div className='text-[14px] text-[#999999]'>
+                                {
+                                    !!paymentMethodInfo ?
+                                        "编辑"
+                                        : "添加退款方式"
+                                }&nbsp;&nbsp;&gt;
+                            </div>
                         }
 
                     </div>
+                    {!!paymentMethodInfo && <div className='flex items-center mt-[20px] mb-[12px] gap-[15px]'>
+                        <Image
+                            width={24}
+                            height={24}
+                            alt="land"
+                            src={paymentMethodInfo?.icon ?? ""}
+                            style={{
+                                width: 24,
+                                height: 24,
+                            }}
+                        />
+                        <div className='text-[#E7E7E7] text-[14px]'>
+                            {
+                                paymentMethodInfo?.label ?? ""
+                            }
+                        </div>
+                    </div>}
                 </div>
 
                 <div className="bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-[10px] pb-[15px]">
@@ -190,16 +225,28 @@ const refundOrder = () => {
                     exit={{ y: "-100%" }}
                     className={cn("fixed bottom-0 left-0 z-10 w-full bg-[#1A1A1A] p-[15px] flex gap-[15px]")}
                 >
-                    <PixelButton
-                        variant="primary"
-                        className={cn("w-full rounded-full", !selectedPaymentMethod && "bg-[#31261A] text-[#999999] pointer-events-none")}
-                        disabled={!selectedPaymentMethod}
-                        onClick={() => {
-                            handleRefund();
-                        }}
-                    >
-                        我要退货
-                    </PixelButton>
+                    {
+                        isSubmitted ?
+                            <PixelButton
+                                variant="primary"
+                                className={cn("w-full rounded-full", !selectedPaymentMethod && "bg-[#31261A] text-[#999999] pointer-events-none")}
+                                disabled={!selectedPaymentMethod}
+                                onClick={() => {
+                                    setCancelRefundDrawerOpen(true)
+                                }}
+                            >
+                                取消退货
+                            </PixelButton>
+                            : <PixelButton
+                                variant="primary"
+                                className={cn("w-full rounded-full", !selectedPaymentMethod && "bg-[#31261A] text-[#999999] pointer-events-none")}
+                                disabled={!selectedPaymentMethod}
+                                onClick={() => {
+                                    handleRefund();
+                                }}
+                            >
+                                我要退货
+                            </PixelButton>}
                 </motion.aside>
             </div>
 
@@ -210,6 +257,66 @@ const refundOrder = () => {
                 setSelectedPaymentMethod={setSelectedPaymentMethod}
                 onRefundMethodSubmit={onRefundMethodSubmit}
             />
+
+            {/* 取消退货抽屉 */}
+            <PixelBottomDrawer
+                title="取消退货"
+                height='60vh'
+                isVisible={cancelRefundDrawerOpen}
+                onClose={() => setCancelRefundDrawerOpen(false)}
+            >
+                <div className="w-full pb-[60px]">
+                    <div className='text-[#E7E7E7] text-[16px] pl-[15px] my-[30px]'>
+                        确认取消本次退货退款？
+                    </div>
+                    <div className='rounded-[8px] bg-[#1A1A1A] p-[10px]'>
+                        <div className='pl-[5px] pt-[6px] pb-[10px] text-[#CCCCCC] text-[13px] border-b-[.5px] border-[#66666630]'>
+                            订单号：<span className='text-[#999999]'>5345842426543651</span>
+                        </div>
+                        <div className="flex gap-[15px] mt-[15px]">
+                            <GoodsIcon imgSrc='' />
+                            <div className='flex-1 flex flex-col'>
+                                <div className="text-sm text-[15px] flex items-center justify-between">
+                                    <div className='text-[#E7E7E7]'>
+                                        商品名称
+                                    </div>
+                                    <div className='text-[#CCCCCC]'>
+                                        ￥123.12
+                                    </div>
+                                </div>
+                                <div className="text-xs flex items-center mt-[15px] mb-[10px]">
+                                    <div className='text-[12px] text-[#999999]'>
+                                        商品数量：
+                                    </div>
+                                    <div className='text-[12px] text-[#CCCCCC]'>
+                                        x3
+                                    </div>
+                                </div>
+                                <div className="text-xs flex items-center">
+                                    <div className='text-[12px] text-[#999999]'>
+                                        TDB数量：
+                                    </div>
+                                    <div className='text-[12px] text-[#CCCCCC]'>
+                                        213
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <PixelButton
+                    variant="primary"
+                    className={cn(
+                        "w-[calc(100%-32px)] h-[44px] rounded-full text-[#fff] text-[15px] fixed left-[16px] bottom-[16px]",
+                    )}
+                    onClick={() => {
+                        handleCancel();
+                    }}
+                >
+                    确认
+                </PixelButton>
+            </PixelBottomDrawer>
         </>
     );
 }

@@ -7,17 +7,18 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { X } from 'lucide-react';
 
 interface MultiImageUploaderProps {
+    imagesList?: File[];
     max?: number;
     placeholder?: string;
     onChange?: (images: File[]) => void;
 }
 
-const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, placeholder = "点击上传", onChange }) => {
+const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ imagesList, max = 5, placeholder = "点击上传", onChange }) => {
     const [images, setImages] = useState<File[]>([]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +35,10 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({ max = 5, placeh
         setImages(updatedImages);
         onChange?.(updatedImages);
     };
+
+    useEffect(() => {
+        setImages(imagesList ?? []);
+    }, [imagesList]);
 
     return (
         <div className="flex flex-wrap gap-2">

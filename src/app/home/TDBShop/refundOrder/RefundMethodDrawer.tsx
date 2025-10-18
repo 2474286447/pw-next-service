@@ -68,20 +68,20 @@ const RefundMethodDrawer = (props: refundMethodDrawerProps) => {
         }
     }
 
-    useEffect(() => {
-        // 关闭时重置收款信息
-        if (!refundMethodDrawerOpen) {
-            setContactInfo(
-                {
-                    images: [],
-                    accountName: "",
-                    bankName: "",
-                    bankAccount: "",
-                    contact: "",
-                }
-            )
-        }
-    }, [refundMethodDrawerOpen]);
+    // useEffect(() => {
+    //     // 关闭时重置收款信息
+    //     if (!refundMethodDrawerOpen) {
+    //         setContactInfo(
+    //             {
+    //                 images: [],
+    //                 accountName: "",
+    //                 bankName: "",
+    //                 bankAccount: "",
+    //                 contact: "",
+    //             }
+    //         )
+    //     }
+    // }, [refundMethodDrawerOpen]);
 
     // 提交退款按钮是否禁用
     const refundMethodButtonDisabled = validateContactInfoHasEmpty();
@@ -136,7 +136,7 @@ const RefundMethodDrawer = (props: refundMethodDrawerProps) => {
                 <div style={{
                     display: isBankPayment ? 'none' : 'block'
                 }}>
-                    <MultiImageUploader max={2} placeholder={"上传收款码"} onChange={(images) => {
+                    <MultiImageUploader imagesList={contactInfo?.images} max={2} placeholder={"上传收款码"} onChange={(images) => {
                         setContactInfo(prev => ({ ...prev, images }))
                     }} />
                 </div>
