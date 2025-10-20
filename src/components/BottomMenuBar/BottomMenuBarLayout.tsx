@@ -1,7 +1,7 @@
 /*
  * @Author: yy
  * @Date: 2025-09-19 20:55:05
- * @LastEditTime: 2025-09-29 20:24:04
+ * @LastEditTime: 2025-10-20 21:06:54
  * @LastEditors: yy
  * @Description: 
  */
@@ -52,7 +52,7 @@ const BottomMenuBarLayout: React.FC<BottomMenuBarLayoutProps> = (props) => {
         {
             name: "市场",
             icon: marketImg,
-            path: "/market",
+            path: pathMap.PW_MARKET,
         },
         {
             name: "领地",

@@ -1,3 +1,10 @@
+/*
+ * @Author: yy
+ * @Date: 2025-09-28 20:10:18
+ * @LastEditTime: 2025-10-20 21:07:51
+ * @LastEditors: yy
+ * @Description: 
+ */
 'use client'
 
 import { usePathname } from 'next/navigation'
@@ -22,7 +29,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   // 需要使用 BottomMenuBarLayout 布局的路由
   const bottomMenuBarRoutes = [
     '/dashboard',
-    '/market',
+    pathMap.PW_MARKET,
     '/assets',
     pathMap.HOME,
     pathMap.TERRITORY,

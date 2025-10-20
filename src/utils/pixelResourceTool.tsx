@@ -21,6 +21,7 @@ import { motion } from 'framer-motion';
 /** 资源key取值类型 */
 // export type ResourceKey = keyof InventoryData['materials'] | keyof InventoryData['tools'] | keyof InventoryData['special']
 export type ResourceKey = PIXEL_RESOURCE_SERVICE_KEYS;
+// 服务端key映射
 export enum PIXEL_RESOURCE_SERVICE_KEYS {
     /** 铁矿 */
     IRON = "iron",

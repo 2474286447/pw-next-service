@@ -97,7 +97,7 @@ const miningCenter = () => {
 
     return (
         <ErrorBoundary>
-            <div className="flex flex-col items-center justify-center h-[100%-calc(var(--bottom-menu-height,58px))] pt-[66px] pb-[100px]">
+            <div className="flex flex-col items-center justify-center pt-[70px] pb-[100px]">
 
                 {/* 顶部标题 */}
                 <FixedHeader>

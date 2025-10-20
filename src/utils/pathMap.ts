@@ -18,6 +18,8 @@ export const pathMap = {
     TDBSHOP_TDBORDER: '/home/TDBShop/TDBOrder',
     /** TDB商城-退货退款 */
     TDBSHOP_TDBORDER_REFUND: '/home/TDBShop/refundOrder',
+    /** 市场页 */
+    PW_MARKET: '/PWmarket',
     /** 领地页 */
     TERRITORY: '/territory',
     /** 领地页-我的工具 */

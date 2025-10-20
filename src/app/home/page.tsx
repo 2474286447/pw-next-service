@@ -101,7 +101,7 @@ const Home = () => {
         },
     ]
     return (
-        <div className="px-[15px] pt-[66px]">
+        <div className="px-[15px] pt-[70px]">
 
             {/* 顶部标题 */}
             <FixedHeader>
