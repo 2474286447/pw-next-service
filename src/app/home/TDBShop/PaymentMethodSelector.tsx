@@ -11,6 +11,7 @@ import bankImg from "@/public/icon/payment/bankCardPayment.png";
 import { StaticImageData } from "next/image";
 import Image from 'next/image'
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export type MethodType = 'wechat' | 'alipay' | 'bank'
 
@@ -33,31 +34,33 @@ export default function PaymentMethodSelector({ selected, onSelect }: Props) {
 
 
     return (
-        <div className="space-y-2">
-            {methods.map(method => {
-                const hasSelected = selected === method.key;
-                return <div
-                    key={method.key}
-                    onClick={() => onSelect(method.key)}
-                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer `}
-                >
-                    <Image
-                        width={24}
-                        height={24}
-                        alt="payment method icon"
-                        src={method.icon}
-                        style={{
-                            width: 24,
-                            height: 24,
-                        }}
-                    />
-                    <span className="flex-1">{method.label}</span>
-                    <div className={cn("text-[12px] text-center border border-[#eeeeee1c] border-[1px] rounded-full w-[22px] h-[22px] scale-x-[-1] rotate-45",
-                        hasSelected ? "bg-[#cd610b]" : "")}>
-                        {hasSelected && 'L'}
+        <ErrorBoundary>
+            <div className="space-y-2">
+                {methods.map(method => {
+                    const hasSelected = selected === method.key;
+                    return <div
+                        key={method.key}
+                        onClick={() => onSelect(method.key)}
+                        className={`flex items-center space-x-2 p-2 rounded cursor-pointer `}
+                    >
+                        <Image
+                            width={24}
+                            height={24}
+                            alt="payment method icon"
+                            src={method.icon}
+                            style={{
+                                width: 24,
+                                height: 24,
+                            }}
+                        />
+                        <span className="flex-1">{method.label}</span>
+                        <div className={cn("text-[12px] text-center border border-[#eeeeee1c] border-[1px] rounded-full w-[22px] h-[22px] scale-x-[-1] rotate-45",
+                            hasSelected ? "bg-[#cd610b]" : "")}>
+                            {hasSelected && 'L'}
+                        </div>
                     </div>
-                </div>
-            })}
-        </div>
+                })}
+            </div>
+        </ErrorBoundary>
     )
 }

@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import RefundMethodDrawer from './RefundMethodDrawer';
 import { getMethodTypeInfo, MethodType } from '../PaymentMethodSelector';
 import PixelBottomDrawer from '@/components/shared/PixelBottomDrawer';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 /** 退货退款 */
 const refundOrder = () => {
@@ -69,8 +70,7 @@ const refundOrder = () => {
     const paymentMethodInfo = getMethodTypeInfo(selectedPaymentMethod);
 
     return (
-        <>
-
+        <ErrorBoundary>
             <div className="px-[15px] pt-[66px] pb-[75px]">
 
                 {/* 顶部标题 */}
@@ -317,7 +317,7 @@ const refundOrder = () => {
                     确认
                 </PixelButton>
             </PixelBottomDrawer>
-        </>
+        </ErrorBoundary>
     );
 }
 

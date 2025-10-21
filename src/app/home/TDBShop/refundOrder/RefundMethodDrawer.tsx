@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import PaymentMethodSelector, { MethodType } from "../PaymentMethodSelector";
 import { useEffect, useState } from "react";
 import MultiImageUploader from "@/components/MultiImageUploader";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface refundMethodDrawerProps {
     /** 抽屉显示状态 */
@@ -116,7 +117,7 @@ const RefundMethodDrawer = (props: refundMethodDrawerProps) => {
                     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setContactInfo(prev => ({ ...prev, contact: e.target.value }))
                 }
             ]
-    return <>
+    return <ErrorBoundary>
         <PixelBottomDrawer
             title="退款方式"
             isVisible={refundMethodDrawerOpen}
@@ -177,7 +178,7 @@ const RefundMethodDrawer = (props: refundMethodDrawerProps) => {
                 确认
             </PixelButton>
         </PixelBottomDrawer>
-    </>
+    </ErrorBoundary>
 }
 
 export default RefundMethodDrawer;

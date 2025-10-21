@@ -15,6 +15,8 @@ interface BottomDrawerProps {
     className?: string;
     height?: string;
     title?: string;
+    // 自定义头部
+    header?: ReactNode;
 }
 
 const BottomDrawer = ({
@@ -24,6 +26,7 @@ const BottomDrawer = ({
     className = "",
     height = "70vh",
     title = "",
+    header,
 }: BottomDrawerProps) => {
     // 移动端标识
     const [isMobile, setIsMobile] = useState(false)
@@ -104,17 +107,23 @@ const BottomDrawer = ({
                     >
                         {/* 内容区域 */}
                         <div className="px-4 pt-10 pb-4" style={{ height }}>
-                            {/* 标题 */}
-                            <div className="absolute top-4 left-4 text-[#E0E0E0] text-[14px] font-bold">
-                                {title}
-                            </div>
-                            {/* 关闭按钮 */}
-                            <button
-                                onClick={onClose}
-                                className="absolute top-4 right-4 w-[20px] h-[20px] bg-[#353535] rounded-full flex items-center justify-center text-white text-[10px]"
-                            >
-                                ✕
-                            </button>
+                            {
+                                header
+                                    ? header
+                                    : <>
+                                        {/* 标题 */}
+                                        <div className="absolute top-4 left-4 text-[#E0E0E0] text-[14px] font-bold">
+                                            {title}
+                                        </div>
+                                        {/* 关闭按钮 */}
+                                        <button
+                                            onClick={onClose}
+                                            className="absolute top-4 right-4 w-[20px] h-[20px] bg-[#353535] rounded-full flex items-center justify-center text-white text-[10px]"
+                                        >
+                                            ✕
+                                        </button>
+                                    </>
+                            }
                             {/* 内容超出滚动 */}
                             <div className="h-full overflow-y-auto">
                                 {children}
